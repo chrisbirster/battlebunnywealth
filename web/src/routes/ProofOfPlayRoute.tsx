@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { For, Show, createResource } from "solid-js";
+import { For, Show, createSignal, onSettled } from "solid-js";
 
 import Shell from "../components/Shell";
 
@@ -23,7 +23,16 @@ async function loadStatus(): Promise<Status> {
 }
 
 export default function ProofOfPlayRoute() {
-  const [status] = createResource(loadStatus);
+  const [status, setStatus] = createSignal<Status>();
+  const [error, setError] = createSignal<string>();
+
+  onSettled(() => void (async () => {
+    try {
+      setStatus(await loadStatus());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "unable to load protocol status");
+    }
+  })());
 
   return (
     <Shell>
@@ -40,6 +49,7 @@ export default function ProofOfPlayRoute() {
           </For>
         </div>
 
+        <Show when={error()}>{(message) => <div {...stylex.props(styles.error)}>Protocol status unavailable: {message()}</div>}</Show>
         <Show when={status()} fallback={<div {...stylex.props(styles.status)}>Connecting to local Proof of Play coordinator…</div>}>
           {(network) => (
             <section {...stylex.props(styles.network)}>
@@ -82,6 +92,7 @@ const styles = stylex.create({
   flow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", marginTop: "42px", gap: "8px" },
   step: { minHeight: "120px", padding: "18px", backgroundColor: "#1b1f18", border: "1px solid #343a2c", borderRadius: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between", fontWeight: 800 },
   status: { marginTop: "24px", color: "#858c78" },
+  error: { marginTop: "24px", color: "#ffb4a8", backgroundColor: "#2a1917", border: "1px solid #6f3933", borderRadius: "10px", padding: "14px" },
   network: { marginTop: "36px", padding: "28px", backgroundColor: "#151813", border: "1px solid #414936", borderRadius: "16px" },
   networkHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "20px", flexWrap: "wrap" },
   badge: { color: "#d9f13b", backgroundColor: "#272d21", border: "1px solid #4a543d", borderRadius: "999px", padding: "8px 10px", fontSize: "12px", fontWeight: 900 },

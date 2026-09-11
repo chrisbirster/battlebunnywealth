@@ -1,21 +1,20 @@
-import { A } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
-import type { JSX } from "solid-js";
+import type { Element } from "solid-js";
 
-type Props = { children?: JSX.Element };
+type Props = { children?: Element };
 
 export default function Shell(props: Props) {
   return (
     <div {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header)}>
-        <A href="/" {...stylex.props(styles.brand)}>
+        <a href="/" {...stylex.props(styles.brand)}>
           <span {...stylex.props(styles.mark)}>BB</span>
           <span>Battle Bunny Wealth</span>
-        </A>
+        </a>
         <nav {...stylex.props(styles.nav)} aria-label="Primary navigation">
-          <A href="/game" {...stylex.props(styles.navLink)}>Command</A>
-          <A href="/squad" {...stylex.props(styles.navLink)}>Squad</A>
-          <A href="/proof-of-play" {...stylex.props(styles.navLink)}>Proof of Play</A>
+          <a href="/game" {...stylex.props(styles.navLink)}>Command</a>
+          <a href="/squad" {...stylex.props(styles.navLink)}>Squad</a>
+          <a href="/proof-of-play" {...stylex.props(styles.navLink)}>Proof of Play</a>
         </nav>
       </header>
       <main>{props.children}</main>
