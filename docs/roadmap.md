@@ -30,18 +30,19 @@
 - First three businesses and automatic offline earnings with an eight-hour cap.
 - Seasonal Bunny Bucks economy.
 - Business upgrades and first synergies.
+- Persistent NPC orientation sequence across the named story cast.
 - Preliminary local season standings API.
 - Season Zero manual turn-in for cosmetic/service-record rewards.
 - Server-authoritative validation for profile/economy mutations.
 - No persistent ranked combat power from idle wealth.
 
-NPC-driven onboarding and a formal scheduled season lifecycle expand in v0.4 alongside story progression.
+The v0.4 work expands the orientation into a formal scheduled season/story lifecycle.
 
 ## v0.4 — Seasons + story progression
 
 - Formal season lifecycle.
 - Chapter/location progression.
-- NPC-driven onboarding with First Sergeant Hard-as-Nails, Private Stuffy, Captain Cashmere, Corporal Boomboom, Da Champ, and Doc Flopsy.
+- Expand the v0.3 NPC orientation into chapter/location progression and repeatable story delivery.
 - Seasonal NPC story beats and missions.
 - Medals/trophies/profile history.
 - Warren customization.
