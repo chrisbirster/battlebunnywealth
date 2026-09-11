@@ -1,0 +1,46 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Install frontend dependencies
+    dir: web
+    cmds:
+      - npm install
+
+  dev:web:
+    desc: Start the Vite development server
+    dir: web
+    cmds:
+      - npm run dev
+
+  dev:server:
+    desc: Start the Go API and embedded-SPA server
+    cmds:
+      - go run ./cmd/battlebunnywealth
+
+  build:web:
+    desc: Build the Solid SPA into web/dist
+    dir: web
+    cmds:
+      - npm run build
+
+  build:
+    desc: Build the production frontend and Go binary
+    deps: [build:web]
+    cmds:
+      - go build -o ./battlebunnywealth ./cmd/battlebunnywealth
+
+  test:
+    desc: Run frontend typechecking and Go tests
+    cmds:
+      - cd web && npm run typecheck
+      - go test ./...
+
+  ci:
+    desc: Run the local CI equivalent
+    deps: [build:web]
+    cmds:
+      - cd web && npm run typecheck
+      - go test ./...
+      - go vet ./...
+      - go build ./cmd/battlebunnywealth
