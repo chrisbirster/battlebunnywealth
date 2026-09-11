@@ -13,6 +13,7 @@ import {
   runReplay,
   stepArena,
   tileAt,
+  type ArenaPlayer,
   type ArenaReplay,
   type ArenaState,
   type Direction,
@@ -173,13 +174,7 @@ export default function ArenaRoute() {
           <aside {...stylex.props(styles.sidebar)}>
             <div {...stylex.props(styles.panel)}>
               <div {...stylex.props(styles.eyebrow)}>COMBATANTS</div>
-              <For each={arena().players}>{(player) => (
-                <div {...stylex.props(styles.playerRow, !player.alive && styles.dead)}>
-                  <span>{player.icon ?? "🐰"}</span>
-                  <div><strong>{player.name}</strong><small>{player.bot ? "BOT" : "YOU"}</small></div>
-                  <div {...stylex.props(styles.stats)}>💣{player.bombCapacity} ✹{player.blastRadius} ↯{player.speed}</div>
-                </div>
-              )}</For>
+              <For each={arena().players}>{(player) => <CombatantRow player={player} />}</For>
             </div>
             <div {...stylex.props(styles.panel)}>
               <div {...stylex.props(styles.eyebrow)}>PICKUPS</div>
@@ -191,6 +186,25 @@ export default function ArenaRoute() {
         </div>
       </section>
     </Shell>
+  );
+}
+
+function CombatantRow(props: { player: ArenaPlayer }) {
+  if (!props.player.alive) {
+    return (
+      <div {...stylex.props(styles.playerRow, styles.dead)}>
+        <span>{props.player.icon ?? "🐰"}</span>
+        <div><strong>{props.player.name}</strong><small>{props.player.bot ? "BOT" : "YOU"}</small></div>
+        <div {...stylex.props(styles.stats)}>💣{props.player.bombCapacity} ✹{props.player.blastRadius} ↯{props.player.speed}</div>
+      </div>
+    );
+  }
+  return (
+    <div {...stylex.props(styles.playerRow)}>
+      <span>{props.player.icon ?? "🐰"}</span>
+      <div><strong>{props.player.name}</strong><small>{props.player.bot ? "BOT" : "YOU"}</small></div>
+      <div {...stylex.props(styles.stats)}>💣{props.player.bombCapacity} ✹{props.player.blastRadius} ↯{props.player.speed}</div>
+    </div>
   );
 }
 
@@ -210,13 +224,11 @@ function ArenaCell(props: { state: ArenaState; x: number; y: number }) {
     if (pickup()?.kind === "remote") return "📡";
     return "";
   };
-  return (
-    <div {...stylex.props(
-      styles.cell,
-      tile() === "wall" ? styles.wall : tile() === "crate" ? styles.crate : styles.floor,
-      explosion() && styles.explosion,
-    )}>{glyph()}</div>
-  );
+
+  if (explosion()) return <div {...stylex.props(styles.cell, styles.explosion)}>{glyph()}</div>;
+  if (tile() === "wall") return <div {...stylex.props(styles.cell, styles.wall)}>{glyph()}</div>;
+  if (tile() === "crate") return <div {...stylex.props(styles.cell, styles.crate)}>{glyph()}</div>;
+  return <div {...stylex.props(styles.cell, styles.floor)}>{glyph()}</div>;
 }
 
 function keyboardDirection(keys: Set<string>): Direction | undefined {
