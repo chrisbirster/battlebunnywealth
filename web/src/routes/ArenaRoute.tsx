@@ -4,6 +4,7 @@ import { For, Show, createSignal, onCleanup } from "solid-js";
 import Shell from "../components/Shell";
 import {
   chooseBotInput,
+  controllerInput,
   createArena,
   createReplay,
   explosionAt,
@@ -16,6 +17,7 @@ import {
   type ArenaPlayer,
   type ArenaReplay,
   type ArenaState,
+  type ControllerSnapshot,
   type Direction,
   type InputFrame,
 } from "../game/arena";
@@ -37,6 +39,8 @@ export default function ArenaRoute() {
   const held = new Set<string>();
   let bombPressed = false;
   let remotePressed = false;
+  let controllerBombDown = false;
+  let controllerRemoteDown = false;
   let recorder = createReplay(arena());
   let timer: ReturnType<typeof setInterval> | undefined;
 
@@ -45,6 +49,8 @@ export default function ArenaRoute() {
     held.clear();
     bombPressed = false;
     remotePressed = false;
+    controllerBombDown = false;
+    controllerRemoteDown = false;
     setReplayMode(false);
     setSeed(nextSeed);
     const next = createArena(nextSeed, PLAYERS);
@@ -61,11 +67,17 @@ export default function ArenaRoute() {
       return;
     }
 
+    const controller = controllerInput(browserControllerSnapshot());
+    const controllerBombPressed = controller.bombDown && !controllerBombDown;
+    const controllerRemotePressed = controller.remoteDown && !controllerRemoteDown;
+    controllerBombDown = controller.bombDown;
+    controllerRemoteDown = controller.remoteDown;
+
     const frame: InputFrame = {};
     frame.you = {
-      move: keyboardDirection(held),
-      bomb: bombPressed,
-      remote: remotePressed,
+      move: keyboardDirection(held) ?? controller.move,
+      bomb: bombPressed || controllerBombPressed,
+      remote: remotePressed || controllerRemotePressed,
     };
     bombPressed = false;
     remotePressed = false;
@@ -168,7 +180,7 @@ export default function ArenaRoute() {
               <button type="button" onClick={() => { bombPressed = true; }} {...stylex.props(styles.bombButton)}>💣 Bomb</button>
               <button type="button" onClick={() => { remotePressed = true; }} {...stylex.props(styles.remoteButton)}>⚡ Remote</button>
             </div>
-            <p {...stylex.props(styles.help)}>Keyboard: WASD / arrows to move · Space to place bomb · E to remote-detonate after collecting the remote pickup.</p>
+            <p {...stylex.props(styles.help)}>Keyboard: WASD / arrows · Space bomb · E remote. Controller: left stick / D-pad · A bomb · B remote. Touch controls work on mobile.</p>
           </div>
 
           <aside {...stylex.props(styles.sidebar)}>
@@ -229,6 +241,15 @@ function ArenaCell(props: { state: ArenaState; x: number; y: number }) {
   if (tile() === "wall") return <div {...stylex.props(styles.cell, styles.wall)}>{glyph()}</div>;
   if (tile() === "crate") return <div {...stylex.props(styles.cell, styles.crate)}>{glyph()}</div>;
   return <div {...stylex.props(styles.cell, styles.floor)}>{glyph()}</div>;
+}
+
+function browserControllerSnapshot(): ControllerSnapshot | undefined {
+  const pad = navigator.getGamepads?.()[0];
+  if (!pad) return undefined;
+  return {
+    axes: Array.from(pad.axes),
+    buttons: pad.buttons.map((button) => button.pressed),
+  };
 }
 
 function keyboardDirection(keys: Set<string>): Direction | undefined {
