@@ -62,8 +62,8 @@ export default function ProfileRoute() {
             </div>
 
             <form onSubmit={(event) => { event.preventDefault(); void save(); }} {...stylex.props(styles.form)}>
-              <label {...stylex.props(styles.field)}><span>Name</span><input value={profile()!.name} maxLength={24} onInput={(event) => patch({ name: event.currentTarget.value })} /></label>
-              <label {...stylex.props(styles.field)}><span>Callsign</span><input value={profile()!.callsign} maxLength={20} onInput={(event) => patch({ callsign: event.currentTarget.value })} /></label>
+              <label {...stylex.props(styles.field)}><span>Name</span><input value={profile()!.name} maxlength={24} onInput={(event) => patch({ name: event.currentTarget.value })} /></label>
+              <label {...stylex.props(styles.field)}><span>Callsign</span><input value={profile()!.callsign} maxlength={20} onInput={(event) => patch({ callsign: event.currentTarget.value })} /></label>
               <label {...stylex.props(styles.field)}><span>Fur</span><select value={profile()!.fur} onInput={(event) => patch({ fur: event.currentTarget.value })}><For each={furOptions}>{(option) => <option value={option}>{option}</option>}</For></select></label>
               <label {...stylex.props(styles.field)}><span>Ears</span><select value={profile()!.ears} onInput={(event) => patch({ ears: event.currentTarget.value })}><For each={earOptions}>{(option) => <option value={option}>{option}</option>}</For></select></label>
               <label {...stylex.props(styles.field)}><span>Uniform</span><select value={profile()!.uniform} onInput={(event) => patch({ uniform: event.currentTarget.value })}><For each={uniformOptions}>{(option) => <option value={option}>{option}</option>}</For></select></label>
