@@ -1,56 +1,13 @@
-export type PlayerProfile = {
-  name: string;
-  callsign: string;
-  fur: string;
-  ears: string;
-  uniform: string;
-  cosmetics: string[];
-};
-
-export type Business = {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  level: number;
-  incomePerSecond: number;
-  upgradeCost: number;
-  synergy: string;
-};
-
-export type GameSnapshot = {
-  schemaVersion: number;
-  player: PlayerProfile;
-  wallet: { bunnyBucks: number };
-  businesses: Business[];
-  season: { id: string; earnings: number; turnIns: number };
-  incomePerSecond: number;
-  accruedBunnyBucks: number;
-  offlineCapSeconds: number;
-  seasonTurnInTarget: number;
-  rankedPowerAffected: boolean;
-  onboardingStep: number;
-};
-
+export type PlayerProfile = { name: string; callsign: string; fur: string; ears: string; uniform: string; cosmetics: string[] };
+export type Business = { id: string; name: string; description: string; icon: string; level: number; incomePerSecond: number; upgradeCost: number; synergy: string };
+export type SeasonPhase = "preseason" | "active" | "turn-in" | "archived";
+export type Season = { id: string; name: string; phase: SeasonPhase; earnings: number; turnedInBunnyBucks: number; turnIns: number; startedAt: string; endsAt: string; turnInEndsAt: string };
+export type SeasonArchive = { id: string; name: string; location: string; chapter: number; earnings: number; turnIns: number; completedAt: string; trophy: string; medal: string };
+export type StoryState = { chapter: number; location: string; unlockedLocations: string[]; currentBeat: number; completedBeats: string[] };
+export type WarrenState = { theme: string; decorations: string[] };
+export type StoryBeat = { id: string; npc: string; title: string; message: string };
+export type Telemetry = { lifetimeEarned: number; upgradesPurchased: number; offlineAccruals: number; offlineEarned: number; seasonsCompleted: number };
+export type GameSnapshot = { schemaVersion: number; player: PlayerProfile; wallet: { bunnyBucks: number }; businesses: Business[]; season: Season; seasonHistory: SeasonArchive[]; story: StoryState; warren: WarrenState; awards: string[]; telemetry: Telemetry; currentStoryBeat?: StoryBeat; incomePerSecond: number; accruedBunnyBucks: number; offlineCapSeconds: number; seasonTurnInTarget: number; seasonSecondsRemaining: number; rankedPowerAffected: boolean; onboardingStep: number };
 export type Standing = { rank: number; name: string; callsign: string; bunnyBucks: number };
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({ error: `HTTP ${response.status}` })) as { error?: string };
-    throw new Error(body.error ?? `HTTP ${response.status}`);
-  }
-  return response.json() as Promise<T>;
-}
-
-export const gameApi = {
-  state: () => request<GameSnapshot>("/api/v1/game/state"),
-  updateProfile: (profile: PlayerProfile) => request<GameSnapshot>("/api/v1/game/profile", { method: "PUT", body: JSON.stringify(profile) }),
-  upgrade: (id: string) => request<GameSnapshot>(`/api/v1/game/businesses/${encodeURIComponent(id)}/upgrade`, { method: "POST" }),
-  advanceOnboarding: () => request<GameSnapshot>("/api/v1/game/onboarding/advance", { method: "POST" }),
-  turnIn: () => request<GameSnapshot>("/api/v1/game/season/turn-in", { method: "POST" }),
-  standings: () => request<Standing[]>("/api/v1/game/standings"),
-};
+async function request<T>(path:string,init?:RequestInit):Promise<T>{const response=await fetch(path,{...init,headers:{"Content-Type":"application/json",...(init?.headers??{})}});if(!response.ok){const body=await response.json().catch(()=>({error:`HTTP ${response.status}`})) as {error?:string};throw new Error(body.error??`HTTP ${response.status}`)}return response.json() as Promise<T>}
+export const gameApi={state:()=>request<GameSnapshot>("/api/v1/game/state"),updateProfile:(profile:PlayerProfile)=>request<GameSnapshot>("/api/v1/game/profile",{method:"PUT",body:JSON.stringify(profile)}),upgrade:(id:string)=>request<GameSnapshot>(`/api/v1/game/businesses/${encodeURIComponent(id)}/upgrade`,{method:"POST"}),advanceOnboarding:()=>request<GameSnapshot>("/api/v1/game/onboarding/advance",{method:"POST"}),advanceStory:()=>request<GameSnapshot>("/api/v1/game/story/advance",{method:"POST"}),updateWarren:(theme:string)=>request<GameSnapshot>("/api/v1/game/warren",{method:"PUT",body:JSON.stringify({theme})}),turnIn:()=>request<GameSnapshot>("/api/v1/game/season/turn-in",{method:"POST"}),standings:()=>request<Standing[]>("/api/v1/game/standings"),devAdvanceSeason:()=>request<GameSnapshot>("/api/v1/game/dev/season/advance",{method:"POST"})};

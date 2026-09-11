@@ -2,10 +2,9 @@ package game
 
 import "time"
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 const (
-	SeasonID             = "season-0-alpha"
 	SeasonTurnInTarget   = int64(25000)
 	OfflineEarningsLimit = 8 * time.Hour
 )
@@ -22,26 +21,36 @@ type PlayerProfile struct {
 type Wallet struct {
 	BunnyBucks int64 `json:"bunnyBucks"`
 }
-
 type BusinessState struct {
 	ID    string `json:"id"`
 	Level int    `json:"level"`
 }
 
 type SeasonState struct {
-	ID       string `json:"id"`
-	Earnings int64  `json:"earnings"`
-	TurnIns  int    `json:"turnIns"`
+	ID                 string      `json:"id"`
+	Name               string      `json:"name"`
+	Phase              SeasonPhase `json:"phase"`
+	Earnings           int64       `json:"earnings"`
+	TurnedInBunnyBucks int64       `json:"turnedInBunnyBucks"`
+	TurnIns            int         `json:"turnIns"`
+	StartedAt          time.Time   `json:"startedAt"`
+	EndsAt             time.Time   `json:"endsAt"`
+	TurnInEndsAt       time.Time   `json:"turnInEndsAt"`
 }
 
 type State struct {
-	SchemaVersion int             `json:"schemaVersion"`
-	Player        PlayerProfile   `json:"player"`
-	Wallet        Wallet          `json:"wallet"`
-	Businesses    []BusinessState `json:"businesses"`
-	Season        SeasonState     `json:"season"`
-	LastAccruedAt time.Time       `json:"lastAccruedAt"`
-	OnboardingStep int             `json:"onboardingStep"`
+	SchemaVersion  int              `json:"schemaVersion"`
+	Player         PlayerProfile    `json:"player"`
+	Wallet         Wallet           `json:"wallet"`
+	Businesses     []BusinessState  `json:"businesses"`
+	Season         SeasonState      `json:"season"`
+	SeasonHistory  []SeasonArchive  `json:"seasonHistory"`
+	Story          StoryState       `json:"story"`
+	Warren         WarrenState      `json:"warren"`
+	Awards         []string         `json:"awards"`
+	Telemetry      EconomyTelemetry `json:"telemetry"`
+	LastAccruedAt  time.Time        `json:"lastAccruedAt"`
+	OnboardingStep int              `json:"onboardingStep"`
 }
 
 type BusinessView struct {
@@ -56,17 +65,24 @@ type BusinessView struct {
 }
 
 type Snapshot struct {
-	SchemaVersion       int            `json:"schemaVersion"`
-	Player              PlayerProfile  `json:"player"`
-	Wallet              Wallet         `json:"wallet"`
-	Businesses          []BusinessView `json:"businesses"`
-	Season              SeasonState    `json:"season"`
-	IncomePerSecond     int64          `json:"incomePerSecond"`
-	AccruedBunnyBucks   int64          `json:"accruedBunnyBucks"`
-	OfflineCapSeconds   int64          `json:"offlineCapSeconds"`
-	SeasonTurnInTarget  int64          `json:"seasonTurnInTarget"`
-	RankedPowerAffected bool           `json:"rankedPowerAffected"`
-	OnboardingStep      int            `json:"onboardingStep"`
+	SchemaVersion          int              `json:"schemaVersion"`
+	Player                 PlayerProfile    `json:"player"`
+	Wallet                 Wallet           `json:"wallet"`
+	Businesses             []BusinessView   `json:"businesses"`
+	Season                 SeasonState      `json:"season"`
+	SeasonHistory          []SeasonArchive  `json:"seasonHistory"`
+	Story                  StoryState       `json:"story"`
+	Warren                 WarrenState      `json:"warren"`
+	Awards                 []string         `json:"awards"`
+	Telemetry              EconomyTelemetry `json:"telemetry"`
+	CurrentStoryBeat       *StoryBeat       `json:"currentStoryBeat,omitempty"`
+	IncomePerSecond        int64            `json:"incomePerSecond"`
+	AccruedBunnyBucks      int64            `json:"accruedBunnyBucks"`
+	OfflineCapSeconds      int64            `json:"offlineCapSeconds"`
+	SeasonTurnInTarget     int64            `json:"seasonTurnInTarget"`
+	SeasonSecondsRemaining int64            `json:"seasonSecondsRemaining"`
+	RankedPowerAffected    bool             `json:"rankedPowerAffected"`
+	OnboardingStep         int              `json:"onboardingStep"`
 }
 
 type Standing struct {
