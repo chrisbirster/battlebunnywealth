@@ -28,10 +28,31 @@ go run ./cmd/battlebunnywealth
 
 The SPA runs at `http://localhost:5173`; Vite proxies `/api` to `http://127.0.0.1:8080`.
 
-The v0.3 single-player game state persists to `data/game-state.json`. Override the location with:
+## Account + WebAuthn development
+
+Local defaults are configured for passkeys on localhost:
+
+```text
+BBWEALTH_RP_ID=localhost
+BBWEALTH_ORIGINS=http://localhost:8080,http://localhost:5173
+```
+
+Identity state is persisted to `data/identity.json` by default. Per-account game state lives in `data/players/<account-id>.json`.
+
+The first authenticated account can automatically claim the old single-player `data/game-state.json` file. Override paths with:
 
 ```bash
-BBWEALTH_GAME_STATE=/tmp/battle-bunny-state.json go run ./cmd/battlebunnywealth
+BBWEALTH_IDENTITY_STATE=/tmp/bbw-identity.json \
+BBWEALTH_GAME_DIR=/tmp/bbw-players \
+BBWEALTH_GAME_STATE=/tmp/legacy-game-state.json \
+go run ./cmd/battlebunnywealth
+```
+
+Production deployments must set the relying-party and exact allowed origin values for the deployed hostname, for example:
+
+```bash
+BBWEALTH_RP_ID=battlebunnywealth.com
+BBWEALTH_ORIGINS=https://battlebunnywealth.com
 ```
 
 `data/` is intentionally gitignored.
@@ -55,6 +76,10 @@ The Go binary embeds whatever is currently in `web/dist`.
 
 - Prefix HTTP APIs with `/api/v1`.
 - Treat game economy mutations as server-authoritative; browser-calculated balances are never trusted.
+- Account-scoped game APIs require an authenticated passkey session.
+- Browser session cookies are HttpOnly and SameSite=Strict.
+- Treat ATProto `resolved-unverified` links as display metadata only; they grant no security authority.
+- Treat v0.5 browser device keys as `unattested`; they grant no Proof-of-Play authority.
 - Keep transport DTOs JSON-friendly but protocol domain types transport-agnostic when practical.
 - Never expose private device keys.
 - Version signed/protocol structures independently of REST API versions.
