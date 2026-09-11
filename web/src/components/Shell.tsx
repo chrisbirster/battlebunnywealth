@@ -13,7 +13,8 @@ export default function Shell(props: Props) {
         </a>
         <nav {...stylex.props(styles.nav)} aria-label="Primary navigation">
           <a href="/game" {...stylex.props(styles.navLink)}>Command</a>
-          <a href="/squad" {...stylex.props(styles.navLink)}>Squad</a>
+          <a href="/arena" {...stylex.props(styles.navLink)}>Warren Wars</a>
+          <a href="/squad" {...stylex.props(styles.navLink)}>Lore</a>
           <a href="/proof-of-play" {...stylex.props(styles.navLink)}>Proof of Play</a>
         </nav>
       </header>
@@ -27,64 +28,11 @@ export default function Shell(props: Props) {
 }
 
 const styles = stylex.create({
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(180deg, #161914 0%, #0d0f0c 100%)",
-    color: "#f3f0db",
-  },
-  header: {
-    maxWidth: "1180px",
-    margin: "0 auto",
-    padding: "20px 24px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "20px",
-    borderBottom: "1px solid #343a2c",
-  },
-  brand: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    textDecoration: "none",
-    fontWeight: 900,
-    letterSpacing: "-0.02em",
-  },
-  mark: {
-    display: "grid",
-    placeItems: "center",
-    width: "38px",
-    height: "38px",
-    borderRadius: "10px",
-    backgroundColor: "#d9f13b",
-    color: "#11130f",
-    fontSize: "13px",
-    transform: "rotate(-3deg)",
-  },
-  nav: {
-    display: "flex",
-    gap: "18px",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-  },
-  navLink: {
-    color: "#b8bdac",
-    textDecoration: "none",
-    fontSize: "14px",
-    fontWeight: 700,
-    transition: "color 150ms ease",
-    ":hover": { color: "#f3f0db" },
-  },
-  footer: {
-    maxWidth: "1180px",
-    margin: "70px auto 0",
-    padding: "24px",
-    borderTop: "1px solid #343a2c",
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "16px",
-    color: "#7f8575",
-    fontSize: "13px",
-    flexWrap: "wrap",
-  },
+  page: { minHeight: "100vh", background: "linear-gradient(180deg, #161914 0%, #0d0f0c 100%)", color: "#f3f0db" },
+  header: { maxWidth: "1180px", margin: "0 auto", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", borderBottom: "1px solid #343a2c" },
+  brand: { display: "flex", alignItems: "center", gap: "10px", textDecoration: "none", fontWeight: 900, letterSpacing: "-0.02em" },
+  mark: { display: "grid", placeItems: "center", width: "38px", height: "38px", borderRadius: "10px", backgroundColor: "#d9f13b", color: "#11130f", fontSize: "13px", transform: "rotate(-3deg)" },
+  nav: { display: "flex", gap: "18px", flexWrap: "wrap", justifyContent: "flex-end" },
+  navLink: { color: "#b8bdac", textDecoration: "none", fontSize: "14px", fontWeight: 700, transition: "color 150ms ease", ":hover": { color: "#f3f0db" } },
+  footer: { maxWidth: "1180px", margin: "70px auto 0", padding: "24px", borderTop: "1px solid #343a2c", display: "flex", justifyContent: "space-between", gap: "16px", color: "#7f8575", fontSize: "13px", flexWrap: "wrap" },
 });

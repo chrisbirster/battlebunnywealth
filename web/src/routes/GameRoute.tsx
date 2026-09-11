@@ -36,27 +36,15 @@ export default function GameRoute() {
             </div>
             <button type="button" onClick={collect} {...stylex.props(styles.collect)}>Collect $128 + 3 scrap</button>
           </article>
-
-          <article {...stylex.props(styles.operation)}>
-            <div {...stylex.props(styles.icon)}>🔧</div>
-            <div>
-              <div {...stylex.props(styles.small)}>WORKSHOP</div>
-              <h2>Trashcan TNT</h2>
-              <p>Corporal Boomboom says it is safe enough. Legal has declined comment.</p>
-            </div>
-            <button type="button" disabled={scrap() < 15} onClick={() => setScrap((value) => value - 15)} {...stylex.props(styles.craft)}>
-              Craft / 15 scrap
-            </button>
-          </article>
         </div>
 
         <section {...stylex.props(styles.arena)}>
           <div>
-            <div {...stylex.props(styles.eyebrow)}>SKILL MODE</div>
+            <div {...stylex.props(styles.eyebrow)}>v0.2 PLAYABLE NOW</div>
             <h2 {...stylex.props(styles.arenaTitle)}>Warren Wars</h2>
-            <p {...stylex.props(styles.arenaText)}>Grid-based bomb combat is the active half of the loop. Movement, blast timing, destructible terrain, pickups, and bunny-specific abilities come next.</p>
+            <p {...stylex.props(styles.arenaText)}>Every ranked match starts equal. Bunny Bucks, CARROT, account age, and Proof-of-Play authority cannot buy combat power. Win with movement, timing, traps, and pickups earned inside the arena.</p>
           </div>
-          <button type="button" disabled {...stylex.props(styles.deploy)}>Arena prototype coming next</button>
+          <a href="/arena" {...stylex.props(styles.deploy)}>Enter arena →</a>
         </section>
       </section>
     </Shell>
@@ -74,9 +62,8 @@ const styles = stylex.create({
   icon: { fontSize: "38px", width: "64px", height: "64px", display: "grid", placeItems: "center", borderRadius: "14px", backgroundColor: "#292f24" },
   small: { color: "#818878", fontSize: "11px", letterSpacing: "0.12em", fontWeight: 900 },
   collect: { border: 0, borderRadius: "10px", backgroundColor: "#d9f13b", color: "#11130f", padding: "13px 16px", fontWeight: 900, cursor: "pointer" },
-  craft: { border: "1px solid #4a5241", borderRadius: "10px", backgroundColor: "#252a21", color: "#f3f0db", padding: "13px 16px", fontWeight: 900, cursor: "pointer", ":disabled": { opacity: 0.45, cursor: "not-allowed" } },
   arena: { marginTop: "20px", padding: "34px", borderRadius: "18px", border: "1px solid #5e663f", background: "linear-gradient(135deg, #262b1d, #171a14)", display: "flex", justifyContent: "space-between", gap: "24px", alignItems: "center", flexWrap: "wrap" },
   arenaTitle: { fontSize: "42px", margin: "8px 0" },
   arenaText: { color: "#aeb4a4", maxWidth: "700px", lineHeight: 1.6 },
-  deploy: { padding: "14px 18px", borderRadius: "10px", border: "1px solid #535b48", backgroundColor: "transparent", color: "#a6ad9d", fontWeight: 800 },
+  deploy: { padding: "14px 18px", borderRadius: "10px", border: "1px solid #d9f13b", backgroundColor: "#d9f13b", color: "#11130f", fontWeight: 900, textDecoration: "none" },
 });
