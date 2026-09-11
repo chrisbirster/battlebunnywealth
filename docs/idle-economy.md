@@ -17,13 +17,17 @@ Named characters such as First Sergeant Hard-as-Nails, Private Stuffy, Captain C
 
 Authentication/account ownership is intentionally deferred to v0.5. Until then the server hosts one local persistent player state.
 
+## NPC orientation
+
+v0.3 persists a six-step orientation sequence presented by First Sergeant Hard-as-Nails, Private Stuffy, Captain Cashmere, Corporal Boomboom, Da Champ, and Doc Flopsy. The sequence introduces businesses, offline income, the Warren Wars fairness boundary, and Season Zero without making those NPCs playable characters.
+
 ## Persistent state
 
 The Go server owns game state. v0.3 uses a small versioned JSON persistence layer at `data/game-state.json` by default. Override it with `BBWEALTH_GAME_STATE`.
 
 The file is written atomically through a temporary file and carries `schemaVersion: 1`. This keeps persistence dependency-free during the single-player alpha while preserving an explicit migration boundary for a later multi-user database.
 
-Persisted state contains the profile, Bunny Bucks, business levels, current season progress, turn-in count, cosmetics, and last accrual timestamp.
+Persisted state contains the profile, Bunny Bucks, business levels, current season progress, turn-in count, cosmetics, onboarding progress, and last accrual timestamp.
 
 ## Bunny Bucks
 
@@ -80,6 +84,7 @@ v0.3 adds:
 - `GET /api/v1/game/state`
 - `PUT /api/v1/game/profile`
 - `POST /api/v1/game/businesses/{id}/upgrade`
+- `POST /api/v1/game/onboarding/advance`
 - `POST /api/v1/game/season/turn-in`
 - `GET /api/v1/game/standings`
 
