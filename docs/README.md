@@ -8,6 +8,7 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 - [Architecture](architecture.md) — executable system boundaries, product domains, storage separation, and deployment model.
 - [Game design](game-design.md) — player-created bunny, NPC/lore roles, seasonal idle businesses, missions, and equal-start Warren Wars.
 - [Idle economy](idle-economy.md) — v0.3 player profile, persistent state, businesses, offline earnings, synergies, and Season Zero turn-in.
+- [Seasons and story](seasons-story.md) — v0.4 timed seasons, archives, NPC story beats, locations, awards, Warren customization, telemetry, and development controls.
 - [Warren Wars](warren-wars.md) — deterministic arena rules, bombs, pickups, ranked fairness, replay format, inputs, bots, and v0.2 validation.
 - [Proof of Play](proof-of-play.md) — authority, optional network missions, committee-selection research, and consensus phases.
 - [Identity and attestation](identity-and-attestation.md) — player/account/device separation, ATProto, passkeys, Apple App Attest, and Google Play Integrity.

@@ -36,18 +36,21 @@
 - Server-authoritative validation for profile/economy mutations.
 - No persistent ranked combat power from idle wealth.
 
-The v0.4 work expands the orientation into a formal scheduled season/story lifecycle.
+## v0.4 — Seasons + story progression — implemented on `dev`
 
-## v0.4 — Seasons + story progression
-
-- Formal season lifecycle.
-- Chapter/location progression.
-- Expand the v0.3 NPC orientation into chapter/location progression and repeatable story delivery.
-- Seasonal NPC story beats and missions.
-- Medals/trophies/profile history.
-- Warren customization.
-- Competitive season reset/archival rules.
-- Economy telemetry to tune idle progression before connecting valuable protocol rewards.
+- Server-timed `active -> turn-in -> archive -> next season` lifecycle.
+- Seven-day alpha season window and 24-hour turn-in window.
+- Schema-v2 migration for existing v0.3/schema-v1 saves.
+- Archived season history with final earnings, chapter/location, trophies, medals, turn-ins, and completion timestamps.
+- Chapter/location progression through Broken Burrow, Scrap Row, and Carrot District.
+- Persistent NPC story beats with First Sergeant Hard-as-Nails, Private Stuffy, Captain Cashmere, Corporal Boomboom, Da Champ, and Doc Flopsy.
+- Warren themes plus persistent season pennants/trophy decorations.
+- Service-record awards that survive seasonal economy resets.
+- Competitive season resets that return Bunny Bucks/businesses to the baseline while preserving identity/history/status.
+- Economy telemetry for lifetime earnings, upgrades, offline returns, and completed seasons.
+- Accelerated season transitions gated behind `BBWEALTH_DEV_CONTROLS=1` for local testing.
+- `/campaign` UI plus story/Warren APIs.
+- No story/season/Warren reward affects ranked Warren Wars combat power.
 
 ## v0.5 — Account and portable identity
 

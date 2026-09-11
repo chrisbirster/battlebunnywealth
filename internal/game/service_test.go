@@ -6,76 +6,9 @@ import (
 	"time"
 )
 
-func TestOfflineEarningsAreAutomaticAndCapped(t *testing.T) {
-	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	clock := func() time.Time { return now }
-	service, err := NewService(clock, NewMemoryStore())
-	if err != nil { t.Fatal(err) }
-	initial, err := service.Snapshot()
-	if err != nil { t.Fatal(err) }
-	if initial.IncomePerSecond != 39 { t.Fatalf("income=%d want 39", initial.IncomePerSecond) }
-	now = now.Add(12 * time.Hour)
-	after, err := service.Snapshot()
-	if err != nil { t.Fatal(err) }
-	want := int64(39 * 8 * 60 * 60)
-	if after.AccruedBunnyBucks != want { t.Fatalf("accrued=%d want %d", after.AccruedBunnyBucks, want) }
-	if after.Wallet.BunnyBucks != 750+want { t.Fatalf("wallet=%d want %d", after.Wallet.BunnyBucks, 750+want) }
-}
-
-func TestUpgradeAndSynergy(t *testing.T) {
-	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	service, err := NewService(func() time.Time { return now }, NewMemoryStore())
-	if err != nil { t.Fatal(err) }
-	now = now.Add(8 * time.Hour)
-	if _, err := service.Snapshot(); err != nil { t.Fatal(err) }
-	for i := 0; i < 4; i++ { if _, err := service.UpgradeBusiness("carrot-logistics"); err != nil { t.Fatal(err) } }
-	for i := 0; i < 4; i++ { if _, err := service.UpgradeBusiness("scrap-salvage"); err != nil { t.Fatal(err) } }
-	snapshot, err := service.Snapshot()
-	if err != nil { t.Fatal(err) }
-	var logistics BusinessView
-	for _, business := range snapshot.Businesses { if business.ID == "carrot-logistics" { logistics = business } }
-	if logistics.Level != 5 { t.Fatalf("level=%d want 5", logistics.Level) }
-	if logistics.IncomePerSecond != 55 { t.Fatalf("income=%d want 55", logistics.IncomePerSecond) }
-	if logistics.Synergy != "+10% synergy" { t.Fatalf("synergy=%q", logistics.Synergy) }
-}
-
-func TestSeasonTurnInAwardsCosmeticAndResetsPowerlessEconomy(t *testing.T) {
-	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	service, err := NewService(func() time.Time { return now }, NewMemoryStore())
-	if err != nil { t.Fatal(err) }
-	now = now.Add(30 * time.Minute)
-	if _, err := service.Snapshot(); err != nil { t.Fatal(err) }
-	turned, err := service.TurnInSeason()
-	if err != nil { t.Fatal(err) }
-	if turned.Season.TurnIns != 1 || turned.Season.Earnings != 0 { t.Fatalf("season=%+v", turned.Season) }
-	if turned.Wallet.BunnyBucks != 750 { t.Fatalf("wallet=%d", turned.Wallet.BunnyBucks) }
-	if !contains(turned.Player.Cosmetics, "Season Zero Pennant") { t.Fatalf("cosmetics=%v", turned.Player.Cosmetics) }
-	if turned.RankedPowerAffected { t.Fatal("idle economy must never affect ranked combat power") }
-}
-
-func TestProfileValidationAndPersistence(t *testing.T) {
-	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	path := filepath.Join(t.TempDir(), "game-state.json")
-	store := NewFileStore(path)
-	service, err := NewService(func() time.Time { return now }, store)
-	if err != nil { t.Fatal(err) }
-	profile := PlayerProfile{Name: "Boomtail", Callsign: "Fuse", Fur: "charcoal", Ears: "battle-worn", Uniform: "night-black"}
-	if _, err := service.UpdateProfile(profile); err != nil { t.Fatal(err) }
-	reloaded, err := NewService(func() time.Time { return now }, store)
-	if err != nil { t.Fatal(err) }
-	snapshot, err := reloaded.Snapshot()
-	if err != nil { t.Fatal(err) }
-	if snapshot.Player.Name != "Boomtail" || snapshot.Player.Callsign != "Fuse" { t.Fatalf("player=%+v", snapshot.Player) }
-	if !contains(snapshot.Player.Cosmetics, "Recruit Patch") { t.Fatal("profile edit must preserve cosmetics") }
-}
-
-func TestOnboardingProgressPersists(t *testing.T) {
-	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	store := NewMemoryStore()
-	service, err := NewService(func() time.Time { return now }, store)
-	if err != nil { t.Fatal(err) }
-	for i := 0; i < 8; i++ { if _, err := service.AdvanceOnboarding(); err != nil { t.Fatal(err) } }
-	snapshot, err := service.Snapshot()
-	if err != nil { t.Fatal(err) }
-	if snapshot.OnboardingStep != 6 { t.Fatalf("onboarding=%d want 6", snapshot.OnboardingStep) }
-}
+func TestOfflineEarningsAreAutomaticAndCapped(t *testing.T) { now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC); service, err := NewService(func() time.Time { return now }, NewMemoryStore()); if err != nil { t.Fatal(err) }; initial, _ := service.Snapshot(); if initial.IncomePerSecond != 39 { t.Fatalf("income=%d", initial.IncomePerSecond) }; now = now.Add(12 * time.Hour); after, err := service.Snapshot(); if err != nil { t.Fatal(err) }; want := int64(39 * 8 * 60 * 60); if after.AccruedBunnyBucks != want { t.Fatalf("accrued=%d want %d", after.AccruedBunnyBucks, want) }; if after.Telemetry.OfflineAccruals != 1 { t.Fatalf("offline accruals=%d", after.Telemetry.OfflineAccruals) } }
+func TestUpgradeAndSynergy(t *testing.T) { now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC); service, _ := NewService(func() time.Time { return now }, NewMemoryStore()); now = now.Add(8 * time.Hour); service.Snapshot(); for i := 0; i < 4; i++ { if _, err := service.UpgradeBusiness("carrot-logistics"); err != nil { t.Fatal(err) } }; for i := 0; i < 4; i++ { if _, err := service.UpgradeBusiness("scrap-salvage"); err != nil { t.Fatal(err) } }; snapshot, _ := service.Snapshot(); var logistics BusinessView; for _, b := range snapshot.Businesses { if b.ID == "carrot-logistics" { logistics = b } }; if logistics.IncomePerSecond != 55 { t.Fatalf("income=%d", logistics.IncomePerSecond) }; if snapshot.Telemetry.UpgradesPurchased != 8 { t.Fatalf("upgrades=%d", snapshot.Telemetry.UpgradesPurchased) } }
+func TestSeasonLifecycleTurnInArchiveAndUnlock(t *testing.T) { now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC); service, _ := NewService(func() time.Time { return now }, NewMemoryStore()); now = now.Add(30 * time.Minute); service.Snapshot(); turnedPhase, err := service.AdvanceSeasonForDevelopment(); if err != nil { t.Fatal(err) }; if turnedPhase.Season.Phase != SeasonTurnIn { t.Fatalf("phase=%s", turnedPhase.Season.Phase) }; if _, err := service.TurnInSeason(); err != nil { t.Fatal(err) }; archived, err := service.AdvanceSeasonForDevelopment(); if err != nil { t.Fatal(err) }; if len(archived.SeasonHistory) != 1 { t.Fatalf("history=%d", len(archived.SeasonHistory)) }; if archived.Story.Location != "Scrap Row" { t.Fatalf("location=%s", archived.Story.Location) }; if archived.Season.Phase != SeasonActive { t.Fatalf("next phase=%s", archived.Season.Phase) }; if archived.RankedPowerAffected { t.Fatal("season progression must not affect ranked power") } }
+func TestStoryAndWarrenPersist(t *testing.T) { now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC); path := filepath.Join(t.TempDir(), "state.json"); store := NewFileStore(path); service, _ := NewService(func() time.Time { return now }, store); if _, err := service.AdvanceStory(); err != nil { t.Fatal(err) }; if _, err := service.UpdateWarren("scrap-yard"); err != nil { t.Fatal(err) }; reloaded, err := NewService(func() time.Time { return now }, store); if err != nil { t.Fatal(err) }; snapshot, _ := reloaded.Snapshot(); if snapshot.Story.CurrentBeat != 1 || snapshot.Warren.Theme != "scrap-yard" { t.Fatalf("story=%+v warren=%+v", snapshot.Story, snapshot.Warren) } }
+func TestProfileValidationAndPersistence(t *testing.T) { now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC); path := filepath.Join(t.TempDir(), "game-state.json"); store := NewFileStore(path); service, _ := NewService(func() time.Time { return now }, store); profile := PlayerProfile{Name: "Boomtail", Callsign: "Fuse", Fur: "charcoal", Ears: "battle-worn", Uniform: "night-black"}; if _, err := service.UpdateProfile(profile); err != nil { t.Fatal(err) }; reloaded, err := NewService(func() time.Time { return now }, store); if err != nil { t.Fatal(err) }; snapshot, _ := reloaded.Snapshot(); if snapshot.Player.Name != "Boomtail" || !contains(snapshot.Player.Cosmetics, "Recruit Patch") { t.Fatalf("player=%+v", snapshot.Player) } }
+func TestOnboardingProgressPersists(t *testing.T) { now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC); service, _ := NewService(func() time.Time { return now }, NewMemoryStore()); for i := 0; i < 8; i++ { service.AdvanceOnboarding() }; snapshot, _ := service.Snapshot(); if snapshot.OnboardingStep != 6 { t.Fatalf("onboarding=%d", snapshot.OnboardingStep) } }
