@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+coverage/
+*.log
+battlebunnywealth
