@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chrisbirster/battlebunnywealth/internal/game"
 	"github.com/chrisbirster/battlebunnywealth/internal/httpserver"
 	"github.com/chrisbirster/battlebunnywealth/internal/proofofplay"
 	webapp "github.com/chrisbirster/battlebunnywealth/web"
@@ -21,32 +22,27 @@ func main() {
 
 	chain := proofofplay.NewChain(time.Unix(0, 0).UTC())
 	protocol := proofofplay.NewProtocol(proofofplay.DefaultConfig(), chain)
+	gameService, err := game.NewService(time.Now, game.NewFileStore(envOr("BBWEALTH_GAME_STATE", "data/game-state.json")))
+	if err != nil {
+		logger.Error("open game state", "error", err)
+		os.Exit(1)
+	}
 	spa, err := webapp.Handler()
 	if err != nil {
 		logger.Error("create spa handler", "error", err)
 		os.Exit(1)
 	}
 
-	handler := httpserver.New(logger, protocol, spa)
-	server := &http.Server{
-		Addr:              addr,
-		Handler:           handler,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
+	handler := httpserver.New(logger, protocol, gameService, spa)
+	server := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			logger.Error("shutdown server", "error", err)
-		}
+		if err := server.Shutdown(shutdownCtx); err != nil { logger.Error("shutdown server", "error", err) }
 	}()
 
 	logger.Info("battle bunny wealth listening", "addr", addr)
@@ -56,9 +52,4 @@ func main() {
 	}
 }
 
-func envOr(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
-}
+func envOr(key, fallback string) string { if value := os.Getenv(key); value != "" { return value }; return fallback }

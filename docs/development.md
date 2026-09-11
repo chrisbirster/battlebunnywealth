@@ -28,10 +28,19 @@ go run ./cmd/battlebunnywealth
 
 The SPA runs at `http://localhost:5173`; Vite proxies `/api` to `http://127.0.0.1:8080`.
 
+The v0.3 single-player game state persists to `data/game-state.json`. Override the location with:
+
+```bash
+BBWEALTH_GAME_STATE=/tmp/battle-bunny-state.json go run ./cmd/battlebunnywealth
+```
+
+`data/` is intentionally gitignored.
+
 ## Production parity
 
 ```bash
 cd web
+npm run test:arena
 npm run typecheck
 npm run build
 cd ..
@@ -45,6 +54,7 @@ The Go binary embeds whatever is currently in `web/dist`.
 ## API rules
 
 - Prefix HTTP APIs with `/api/v1`.
+- Treat game economy mutations as server-authoritative; browser-calculated balances are never trusted.
 - Keep transport DTOs JSON-friendly but protocol domain types transport-agnostic when practical.
 - Never expose private device keys.
 - Version signed/protocol structures independently of REST API versions.

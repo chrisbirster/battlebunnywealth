@@ -7,22 +7,17 @@ export default function Shell(props: Props) {
   return (
     <div {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header)}>
-        <a href="/" {...stylex.props(styles.brand)}>
-          <span {...stylex.props(styles.mark)}>BB</span>
-          <span>Battle Bunny Wealth</span>
-        </a>
+        <a href="/" {...stylex.props(styles.brand)}><span {...stylex.props(styles.mark)}>BB</span><span>Battle Bunny Wealth</span></a>
         <nav {...stylex.props(styles.nav)} aria-label="Primary navigation">
           <a href="/game" {...stylex.props(styles.navLink)}>Command</a>
+          <a href="/profile" {...stylex.props(styles.navLink)}>My Bunny</a>
           <a href="/arena" {...stylex.props(styles.navLink)}>Warren Wars</a>
           <a href="/squad" {...stylex.props(styles.navLink)}>Lore</a>
           <a href="/proof-of-play" {...stylex.props(styles.navLink)}>Proof of Play</a>
         </nav>
       </header>
       <main>{props.children}</main>
-      <footer {...stylex.props(styles.footer)}>
-        <span>Battle Bunny Wealth</span>
-        <span>Fight hard. Dig deep. Stack carrots.</span>
-      </footer>
+      <footer {...stylex.props(styles.footer)}><span>Battle Bunny Wealth</span><span>Fight hard. Dig deep. Stack carrots.</span></footer>
     </div>
   );
 }
@@ -32,7 +27,7 @@ const styles = stylex.create({
   header: { maxWidth: "1180px", margin: "0 auto", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", borderBottom: "1px solid #343a2c" },
   brand: { display: "flex", alignItems: "center", gap: "10px", textDecoration: "none", fontWeight: 900, letterSpacing: "-0.02em" },
   mark: { display: "grid", placeItems: "center", width: "38px", height: "38px", borderRadius: "10px", backgroundColor: "#d9f13b", color: "#11130f", fontSize: "13px", transform: "rotate(-3deg)" },
-  nav: { display: "flex", gap: "18px", flexWrap: "wrap", justifyContent: "flex-end" },
-  navLink: { color: "#b8bdac", textDecoration: "none", fontSize: "14px", fontWeight: 700, transition: "color 150ms ease", ":hover": { color: "#f3f0db" } },
+  nav: { display: "flex", gap: "16px", flexWrap: "wrap", justifyContent: "flex-end" },
+  navLink: { color: "#b8bdac", textDecoration: "none", fontSize: "13px", fontWeight: 700, transition: "color 150ms ease", ":hover": { color: "#f3f0db" } },
   footer: { maxWidth: "1180px", margin: "70px auto 0", padding: "24px", borderTop: "1px solid #343a2c", display: "flex", justifyContent: "space-between", gap: "16px", color: "#7f8575", fontSize: "13px", flexWrap: "wrap" },
 });
