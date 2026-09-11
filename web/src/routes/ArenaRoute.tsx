@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createSignal, onCleanup } from "solid-js";
 
 import Shell from "../components/Shell";
 import {
@@ -100,23 +100,21 @@ export default function ArenaRoute() {
     window.setTimeout(() => held.delete(`touch-${move}`), 160);
   };
 
-  onMount(() => {
-    const down = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", " ", "e"].includes(key)) event.preventDefault();
-      held.add(key);
-      if (key === " ") bombPressed = true;
-      if (key === "e") remotePressed = true;
-    };
-    const up = (event: KeyboardEvent) => held.delete(event.key.toLowerCase());
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    timer = setInterval(tick, 120);
-    onCleanup(() => {
-      if (timer) clearInterval(timer);
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    });
+  const down = (event: KeyboardEvent) => {
+    const key = event.key.toLowerCase();
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", " ", "e"].includes(key)) event.preventDefault();
+    held.add(key);
+    if (key === " ") bombPressed = true;
+    if (key === "e") remotePressed = true;
+  };
+  const up = (event: KeyboardEvent) => held.delete(event.key.toLowerCase());
+  window.addEventListener("keydown", down);
+  window.addEventListener("keyup", up);
+  timer = setInterval(tick, 120);
+  onCleanup(() => {
+    if (timer) clearInterval(timer);
+    window.removeEventListener("keydown", down);
+    window.removeEventListener("keyup", up);
   });
 
   return (
