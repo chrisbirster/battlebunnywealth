@@ -9,6 +9,7 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 - [Game design](game-design.md) — player-created bunny, NPC/lore roles, seasonal idle businesses, missions, and equal-start Warren Wars.
 - [Idle economy](idle-economy.md) — v0.3 player profile, persistent state, businesses, offline earnings, synergies, and Season Zero turn-in.
 - [Seasons and story](seasons-story.md) — v0.4 timed seasons, archives, NPC story beats, locations, awards, Warren customization, telemetry, and development controls.
+- [Account and portable identity](account-identity.md) — v0.5 passkeys, account-owned game state, ATProto profile links, device enrollment/revocation, and authentication boundaries.
 - [Warren Wars](warren-wars.md) — deterministic arena rules, bombs, pickups, ranked fairness, replay format, inputs, bots, and v0.2 validation.
 - [Proof of Play](proof-of-play.md) — authority, optional network missions, committee-selection research, and consensus phases.
 - [Identity and attestation](identity-and-attestation.md) — player/account/device separation, ATProto, passkeys, Apple App Attest, and Google Play Integrity.
@@ -30,3 +31,4 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 6. CARROT, Bunny Bucks, purchases, authority, account age, and story progress cannot buy ranked combat power.
 7. CARROT is planned as a fixed-supply network coin with a 20% founder/admin supply allocation; the remaining supply schedule and allocation still require formal specification.
 8. Proof of Play remains a research protocol until its Sybil resistance and finality survive simulation and adversarial testing.
+9. Account login, portable/social identity, device identity, and Proof-of-Play authority are separate security concepts; none automatically grants another.
