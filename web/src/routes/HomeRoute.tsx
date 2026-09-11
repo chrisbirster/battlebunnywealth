@@ -1,4 +1,3 @@
-import { A } from "@solidjs/router";
 import * as stylex from "@stylexjs/stylex";
 import { For } from "solid-js";
 
@@ -15,8 +14,8 @@ export default function HomeRoute() {
           An idle military-bunny hustle game with skill-based bomb battles — powered underneath by an experimental Proof of Play network.
         </p>
         <div {...stylex.props(styles.actions)}>
-          <A href="/game" {...stylex.props(styles.primary)}>Enter Warren Command</A>
-          <A href="/proof-of-play" {...stylex.props(styles.secondary)}>How Proof of Play works</A>
+          <a href="/game" {...stylex.props(styles.primary)}>Enter Warren Command</a>
+          <a href="/proof-of-play" {...stylex.props(styles.secondary)}>How Proof of Play works</a>
         </div>
       </section>
 
