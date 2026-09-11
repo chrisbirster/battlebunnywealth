@@ -9,7 +9,7 @@
 - Architecture/security/economy documentation.
 - feature -> dev -> main/tag CI discipline.
 
-## v0.2 — Playable Warren Wars vertical slice
+## v0.2 — Playable Warren Wars vertical slice — implemented on `dev`
 
 - Deterministic grid simulation independent of rendering.
 - One original arena map.
@@ -19,23 +19,30 @@
 - Equal-start ranked rules: no account/season/CARROT/authority combat advantages.
 - Local bots for repeatable testing.
 - Match seed/replay foundation for debugging and fairness checks.
+- Keyboard, touch, and standard-gamepad input.
+- 1,000 seeded deterministic headless-match CI gate.
 
-## v0.3 — Player profile + seasonal idle economy
+## v0.3 — Player profile + seasonal idle economy — implemented on `dev`
 
 - Persistent player-created Battle Bunny profile.
-- Bunny name/callsign/cosmetics.
-- NPC-driven onboarding with First Sergeant Hard-as-Nails, Private Stuffy, Captain Cashmere, Corporal Boomboom, Da Champ, and Doc Flopsy.
-- First businesses and offline earnings.
+- Bunny name, callsign, fur, ears, uniform, and cosmetic locker.
+- Single-player alpha state persisted by the Go server with schema-versioned atomic storage.
+- First three businesses and automatic offline earnings with an eight-hour cap.
 - Seasonal Bunny Bucks economy.
-- Business upgrades/synergies.
-- Season standings.
-- Season turn-in for cosmetic/collection/progression rewards.
+- Business upgrades and first synergies.
+- Persistent NPC orientation sequence across the named story cast.
+- Preliminary local season standings API.
+- Season Zero manual turn-in for cosmetic/service-record rewards.
+- Server-authoritative validation for profile/economy mutations.
 - No persistent ranked combat power from idle wealth.
+
+The v0.4 work expands the orientation into a formal scheduled season/story lifecycle.
 
 ## v0.4 — Seasons + story progression
 
 - Formal season lifecycle.
 - Chapter/location progression.
+- Expand the v0.3 NPC orientation into chapter/location progression and repeatable story delivery.
 - Seasonal NPC story beats and missions.
 - Medals/trophies/profile history.
 - Warren customization.

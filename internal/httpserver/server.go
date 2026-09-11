@@ -2,10 +2,12 @@ package httpserver
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/chrisbirster/battlebunnywealth/internal/game"
 	"github.com/chrisbirster/battlebunnywealth/internal/proofofplay"
 )
 
@@ -14,27 +16,73 @@ type proofOfPlay interface {
 	Head() proofofplay.Block
 }
 
-func New(logger *slog.Logger, protocol proofOfPlay, spa http.Handler) http.Handler {
+func New(logger *slog.Logger, protocol proofOfPlay, gameService *game.Service, spa http.Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/v1/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{
-			"status":  "ok",
-			"service": "battle-bunny-wealth",
-			"version": "dev",
-		})
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "service": "battle-bunny-wealth", "version": "dev"})
 	})
-
 	mux.HandleFunc("GET /api/v1/proof-of-play", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, protocol.Status(time.Now().UTC()))
 	})
-
 	mux.HandleFunc("GET /api/v1/proof-of-play/blocks/head", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, protocol.Head())
 	})
 
+	mux.HandleFunc("GET /api/v1/game/state", func(w http.ResponseWriter, _ *http.Request) {
+		snapshot, err := gameService.Snapshot()
+		if err != nil { writeGameError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
+	mux.HandleFunc("PUT /api/v1/game/profile", func(w http.ResponseWriter, r *http.Request) {
+		var profile game.PlayerProfile
+		if err := decodeJSON(w, r, &profile); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()}); return }
+		snapshot, err := gameService.UpdateProfile(profile)
+		if err != nil { writeGameError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
+	mux.HandleFunc("POST /api/v1/game/businesses/{id}/upgrade", func(w http.ResponseWriter, r *http.Request) {
+		snapshot, err := gameService.UpgradeBusiness(r.PathValue("id"))
+		if err != nil { writeGameError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
+	mux.HandleFunc("POST /api/v1/game/onboarding/advance", func(w http.ResponseWriter, _ *http.Request) {
+		snapshot, err := gameService.AdvanceOnboarding()
+		if err != nil { writeGameError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
+	mux.HandleFunc("POST /api/v1/game/season/turn-in", func(w http.ResponseWriter, _ *http.Request) {
+		snapshot, err := gameService.TurnInSeason()
+		if err != nil { writeGameError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
+	mux.HandleFunc("GET /api/v1/game/standings", func(w http.ResponseWriter, _ *http.Request) {
+		standings, err := gameService.Standings()
+		if err != nil { writeGameError(w, err); return }
+		writeJSON(w, http.StatusOK, standings)
+	})
+
 	mux.Handle("/", spa)
 	return requestLog(logger, securityHeaders(mux))
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, value any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(value)
+}
+
+func writeGameError(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
+	switch {
+	case errors.Is(err, game.ErrInvalidProfile): status = http.StatusBadRequest
+	case errors.Is(err, game.ErrUnknownBusiness): status = http.StatusNotFound
+	case errors.Is(err, game.ErrInsufficientFunds), errors.Is(err, game.ErrTurnInLocked): status = http.StatusConflict
+	}
+	message := err.Error()
+	if status == http.StatusInternalServerError { message = "internal server error" }
+	writeJSON(w, status, map[string]string{"error": message})
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {
