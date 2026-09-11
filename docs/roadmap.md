@@ -52,13 +52,22 @@
 - `/campaign` UI plus story/Warren APIs.
 - No story/season/Warren reward affects ranked Warren Wars combat power.
 
-## v0.5 — Account and portable identity
+## v0.5 — Account and portable identity — implemented on `dev`
 
-- Passkey authentication.
-- Optional ATProto DID/profile binding.
-- Separation of player profile, account identity, authentication identity, and device identity.
-- Device enrollment/revocation data model.
-- Multi-device account policy.
+- WebAuthn/passkey account creation and usernameless passkey login.
+- Short-lived passkey ceremonies with RP ID, origin, challenge, and signature validation.
+- ES256/P-256 passkey support with signature-counter rollback detection.
+- Random opaque sessions stored as hashes and delivered through HttpOnly SameSite=Strict cookies.
+- Per-account persistent Warren/game state with automatic claiming of the legacy single-player save.
+- Multi-account local standings across account-owned game states.
+- Optional `did:plc` ATProto profile resolution stored explicitly as `resolved-unverified`.
+- Separation of player profile, account identity, authentication identity, portable/social identity, and device identity.
+- Multi-device enrollment and revocation data model.
+- Browser-generated P-256 device key persisted locally in IndexedDB; server stores the public key only.
+- All v0.5 browser device keys remain `unattested` and confer zero Proof-of-Play authority.
+- `/account` UI for registration, sign-in, additional passkeys, ATProto linking, device enrollment, and revocation.
+
+The v0.5 WebAuthn verifier is deliberately narrow alpha code and requires security/interoperability review before public production authentication.
 
 ## v0.6 — Proof-of-Play missions and authority
 

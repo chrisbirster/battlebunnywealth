@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/chrisbirster/battlebunnywealth/internal/game"
 	"github.com/chrisbirster/battlebunnywealth/internal/httpserver"
+	"github.com/chrisbirster/battlebunnywealth/internal/identity"
 	"github.com/chrisbirster/battlebunnywealth/internal/proofofplay"
 	webapp "github.com/chrisbirster/battlebunnywealth/web"
 )
@@ -19,12 +21,19 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	addr := envOr("BBWEALTH_ADDR", ":8080")
+	origins := splitCSV(envOr("BBWEALTH_ORIGINS", "http://localhost:8080,http://localhost:5173"))
 
 	chain := proofofplay.NewChain(time.Unix(0, 0).UTC())
 	protocol := proofofplay.NewProtocol(proofofplay.DefaultConfig(), chain)
-	gameService, err := game.NewService(time.Now, game.NewFileStore(envOr("BBWEALTH_GAME_STATE", "data/game-state.json")))
+	gameRegistry := game.NewRegistry(time.Now, envOr("BBWEALTH_GAME_DIR", "data/players"), envOr("BBWEALTH_GAME_STATE", "data/game-state.json"))
+	identityService, err := identity.NewService(time.Now, identity.NewFileStore(envOr("BBWEALTH_IDENTITY_STATE", "data/identity.json")), identity.NewPLCResolver(nil), identity.Config{
+		RPID:           envOr("BBWEALTH_RP_ID", "localhost"),
+		RPName:         "Battle Bunny Wealth",
+		AllowedOrigins: origins,
+		SessionTTL:     30 * 24 * time.Hour,
+	})
 	if err != nil {
-		logger.Error("open game state", "error", err)
+		logger.Error("open identity state", "error", err)
 		os.Exit(1)
 	}
 	spa, err := webapp.Handler()
@@ -33,7 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := httpserver.New(logger, protocol, gameService, spa)
+	handler := httpserver.New(logger, protocol, gameRegistry, identityService, spa)
 	server := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -53,3 +62,4 @@ func main() {
 }
 
 func envOr(key, fallback string) string { if value := os.Getenv(key); value != "" { return value }; return fallback }
+func splitCSV(value string) []string { var out []string; for _, item := range strings.Split(value, ",") { if item = strings.TrimSpace(item); item != "" { out = append(out, item) } }; return out }
