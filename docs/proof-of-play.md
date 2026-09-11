@@ -4,7 +4,9 @@
 
 Proof of Play asks whether **long-lived, attested participation by ordinary users/devices** can become part of a blockchain's Sybil-resistance and validator-selection mechanism.
 
-It is not "proof that somebody tapped a button." Taps are cheap to automate. The protocol combines multiple signals and costs:
+It is not "proof that somebody tapped a button" and it is not "the person who plays the most controls the chain." Taps are cheap to automate and raw playtime is easy to game.
+
+The current design combines multiple signals and costs:
 
 ```text
 portable participant identity
@@ -15,18 +17,72 @@ platform/device attestation
         +
 unpredictable epoch challenges
         +
-participation history / reputation
+completed optional network missions
+        +
+participation history / authority
         +
 rate limits + diminishing multi-device weight
         ->
-validator eligibility weight
+validator/committee eligibility weight
 ```
 
-## Why a game
+## Relationship to the game
 
-Most consensus clients expose protocol machinery directly. Battle Bunny Wealth gives those events a comprehensible fiction. An epoch challenge can become a squad job; a successful proof can advance an operation; validator reputation can map to service record/rank.
+Proof of Play is the network layer underneath Battle Bunny Wealth, but ordinary game progression must remain enjoyable without understanding or optimizing the protocol.
 
-The game must remain fun if the protocol is turned off.
+The game exposes network work through story missions. The player sees First Sergeant Hard-as-Nails assigning Recon Patrol, Checkpoint Duty, or Secure the Supply Line. The protocol sees a device answering unpredictable challenges, validating data, signing state, or participating in a committee.
+
+The game must still function if Proof of Play is unavailable.
+
+## Optional missions
+
+Missions are the primary source of **Proof-of-Play authority**.
+
+Important rule:
+
+> Missions are optional for the idle economy and Warren Wars, but active and honest mission participation increases a player's probability of being selected for network verification duties.
+
+A player who ignores network missions can still:
+
+- create and customize a bunny
+- build businesses
+- generate seasonal Bunny Bucks
+- progress through ordinary story content
+- enter Warren Wars
+- compete under the same ranked match rules
+
+They simply accumulate less network authority than a player who consistently completes valid Proof-of-Play missions.
+
+## Authority
+
+Authority is a protocol reputation/eligibility signal. It is **not combat power, money, or voting power that grows without bound**.
+
+Authority should reflect qualified participation over time rather than raw clicks.
+
+Candidate behavior:
+
+- valid missions add authority gradually
+- repeated or low-value actions are rate limited
+- recently created identities begin with little authority
+- authority is capped or transformed through a bounded weighting function
+- inactivity causes slow decay rather than instant loss
+- invalid, equivocal, fraudulent, or abusive participation can reduce or suspend eligibility
+- multiple devices for one person are legitimate but receive diminishing additional weight
+
+This produces the intended relationship:
+
+```text
+inactive participant
+lower committee-selection probability
+
+occasionally active participant
+moderate probability
+
+consistently active + honest participant
+higher probability
+```
+
+Higher authority means **more chance**, not guaranteed selection.
 
 ## Protocol objects
 
@@ -40,19 +96,27 @@ A participant-bound public key whose private key should live in Secure Enclave /
 
 ### Epoch
 
-A bounded protocol period. The scaffold defaults to ten minutes. Epoch duration is a consensus parameter and must become versioned before testnet.
+A bounded protocol period. The current scaffold defaults to ten minutes. Epoch duration is a consensus parameter and must become versioned before testnet.
 
 ### Challenge
 
 An unpredictable, short-lived challenge bound to an epoch. Challenges prevent precomputation and replay.
 
+### Mission
+
+A game-facing assignment that may wrap one or more protocol tasks. Not every story mission has to affect consensus. Only missions that produce independently verifiable protocol evidence can contribute authority.
+
 ### Participation proof
 
 An envelope containing participant/device/challenge/epoch references, attestation digest, and device signature. v0 implements envelope validation interfaces; real Apple/Google verification is a later adapter.
 
+### Authority record
+
+A deterministic protocol-state representation of the participant's qualified history, decay, penalties, and capped selection weight. The exact formula remains a research item and must be simulation-tested.
+
 ### Committee
 
-A sampled set of eligible participants that proposes/attests blocks. The research target is stake-independent or stake-light selection based primarily on qualified participation weight.
+A randomly sampled set of eligible participants that proposes and/or attests blocks. Selection should be unpredictable and weighted by bounded qualified authority rather than raw wealth or raw device count.
 
 ### Block
 
@@ -60,23 +124,82 @@ The current scaffold implements a SHA-256 linked block structure. It is not yet 
 
 ## Candidate weighting
 
-Initial research hypothesis:
+Initial research hypothesis for device contribution:
 
 - first qualified device: 100% base device weight
 - second: 25%
 - third: 10%
 - fourth and later: 2% each
-- reputation increases slowly and is capped
-- inactivity decays reputation
+- authority increases slowly and is capped
+- inactivity decays authority gradually
 - recently enrolled identities cannot immediately dominate committees
 
-Those numbers are placeholders to simulate attacks, not final tokenomics.
+Those numbers are placeholders for simulation and attack analysis, not final tokenomics or consensus constants.
 
-## Human interactions
+## Committee selection sketch
 
-Do not require constant tapping. Target 1–4 meaningful, unpredictable interactions per day at most. Background protocol work should do most of the participation work.
+Conceptually:
 
-Human interaction is a liveness/bot-cost signal, not a sole proof of personhood.
+```text
+all enrolled participants
+        |
+filter valid device/identity state
+        |
+calculate bounded authority weight
+        |
+use unpredictable protocol randomness / VRF-style selection
+        |
+small verification committee
+        |
+committee votes/attests
+        |
+quorum finalizes block
+```
+
+A future implementation must specify randomness, committee size, quorum, equivocation handling, liveness rules, and finality formally.
+
+## Human interaction
+
+Do not require constant tapping. The idle game should remain genuinely idle.
+
+Human interaction can be an occasional liveness/bot-cost signal, but the useful network task matters more than repetitive screen interaction. A mission should not become a CAPTCHA job or punish players financially for not opening the app every few hours.
+
+The exact mission cadence is TBD. It should be low enough that normal players can participate without compulsive engagement.
+
+## CARROT relationship
+
+CARROT is the planned fixed-supply network coin. Proof of Play is the primary candidate mechanism for distributing the network-participation portion of CARROT issuance.
+
+A participant should not receive CARROT merely for having the game installed or for generating Bunny Bucks. Rewards should correspond to qualified protocol participation under deterministic issuance rules.
+
+Authority and CARROT remain distinct:
+
+```text
+authority
+= chance/eligibility to perform verification work
+
+CARROT
+= scarce network asset/reward
+```
+
+Large CARROT ownership must not directly purchase ranked Warren Wars power.
+
+## What Proof of Play is trying to make costly
+
+Every public blockchain needs a reason that one attacker cannot cheaply pretend to be millions of independent participants.
+
+Proof of Play's research hypothesis is that an attacker should need some combination of:
+
+- many legitimate attested devices
+- many persistent identities
+- meaningful elapsed time
+- valid unpredictable challenge responses
+- sustained participation history
+- ongoing operational effort
+
+rather than merely creating millions of accounts.
+
+Whether those costs are sufficient to secure valuable consensus is an open research question, not an assumption.
 
 ## Consensus research phases
 
@@ -84,22 +207,26 @@ Human interaction is a liveness/bot-cost signal, not a sole proof of personhood.
 
 Deterministic block hashing, epochs, challenges, device/proof types, verification interfaces, threat model.
 
-### P1 — attested participation
+### P1 — mission/authority model
+
+Deterministic authority state, mission qualification, bounded weighting, inactivity decay, penalties, and selection inputs.
+
+### P2 — attested participation
 
 Native iOS/Android enrollment, App Attest/Play Integrity verification, hardware key challenge signing, replay prevention.
 
-### P2 — simulator
+### P3 — simulator
 
-Model honest users, multi-device households, phone farms, bot farms, colluding validators, offline rates, and attestation-provider outages. Tune committee and reputation rules from simulation rather than intuition.
+Model honest users, inactive players, highly active players, multi-device households, phone farms, bot farms, colluding validators, offline rates, mission-completion distributions, and attestation-provider outages. Tune committee and authority rules from simulation rather than intuition.
 
-### P3 — permissioned testnet
+### P4 — permissioned testnet
 
 Multiple independently operated nodes, deterministic state transition, committee selection, voting/finality, networking, persistent storage, observability.
 
-### P4 — adversarial public testnet
+### P5 — adversarial public testnet
 
-Open enrollment with no valuable token. Bug bounty, Sybil attacks, economic modeling, protocol upgrades.
+Open enrollment with valueless or non-transferable test assets first. Run bug bounties, Sybil attacks, economic modeling, and protocol-upgrade exercises.
 
-### P5 — economic layer decision
+### P6 — CARROT economic activation
 
-Only after security data exists decide whether a transferable token is necessary at all.
+Only after adversarial data exists should the fixed-supply CARROT issuance schedule and economically valuable network rewards activate.
