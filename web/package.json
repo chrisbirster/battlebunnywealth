@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:arena": "node --test --experimental-strip-types src/game/arena/*.test.ts"
   },
   "dependencies": {
     "@solidjs/router": "2.0.0-next.17",

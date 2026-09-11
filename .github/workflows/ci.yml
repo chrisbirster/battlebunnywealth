@@ -24,6 +24,9 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: npm install
+      - name: Test Warren Wars simulation
+        working-directory: web
+        run: npm run test:arena
       - name: Typecheck web
         working-directory: web
         run: npm run typecheck
