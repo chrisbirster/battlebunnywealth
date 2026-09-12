@@ -1,15 +1,49 @@
 export async function createBrowserDeviceKey(): Promise<string> {
   const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
   const spki = await crypto.subtle.exportKey("spki", pair.publicKey);
-  await persistPrivateKey(pair.privateKey);
-  return toB64(spki);
+  const encoded = toB64(spki);
+  await persistDeviceKey(pair.privateKey, encoded);
+  return encoded;
 }
 
-async function persistPrivateKey(key: CryptoKey): Promise<void> {
+export async function currentBrowserDevicePublicKey(): Promise<string | undefined> {
+  const db = await openDB();
+  try {
+    return await new Promise<string | undefined>((resolve, reject) => {
+      const tx = db.transaction("device-keys", "readonly");
+      const req = tx.objectStore("device-keys").get("current-spki");
+      req.onsuccess = () => resolve(typeof req.result === "string" ? req.result : undefined);
+      req.onerror = () => reject(req.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export async function signCurrentDevicePayload(payload: string): Promise<string> {
+  const db = await openDB();
+  try {
+    const key = await new Promise<CryptoKey | undefined>((resolve, reject) => {
+      const tx = db.transaction("device-keys", "readonly");
+      const req = tx.objectStore("device-keys").get("current");
+      req.onsuccess = () => resolve(req.result instanceof CryptoKey ? req.result : undefined);
+      req.onerror = () => reject(req.error);
+    });
+    if (!key) throw new Error("This browser does not have an enrolled device key. Enroll it from Account first.");
+    const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(payload));
+    return toB64(signature);
+  } finally {
+    db.close();
+  }
+}
+
+async function persistDeviceKey(key: CryptoKey, publicKeySpki: string): Promise<void> {
   const db = await openDB();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction("device-keys", "readwrite");
-    tx.objectStore("device-keys").put(key, "current");
+    const store = tx.objectStore("device-keys");
+    store.put(key, "current");
+    store.put(publicKeySpki, "current-spki");
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
