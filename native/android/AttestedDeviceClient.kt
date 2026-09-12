@@ -3,9 +3,11 @@ package com.battlebunnywealth.attestation
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
+import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.Signature
@@ -48,16 +50,24 @@ class AttestedDeviceClient(
     }
 
     fun createHardwareBackedMissionKey(alias: String = "bbw-pop-device"): String {
+        val pair = try {
+            generateMissionKey(alias, strongBox = true)
+        } catch (_: StrongBoxUnavailableException) {
+            generateMissionKey(alias, strongBox = false)
+        }
+        // PublicKey.encoded is X.509 SubjectPublicKeyInfo, matching the Go enrollment API.
+        return base64Url(pair.public.encoded)
+    }
+
+    private fun generateMissionKey(alias: String, strongBox: Boolean): KeyPair {
         val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
         val builder = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
             .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
             .setDigests(KeyProperties.DIGEST_SHA256)
             .setUserAuthenticationRequired(false)
-        try { builder.setIsStrongBoxBacked(true) } catch (_: Throwable) { /* StrongBox is optional. */ }
+        if (strongBox) builder.setIsStrongBoxBacked(true)
         generator.initialize(builder.build())
-        val pair = generator.generateKeyPair()
-        // PublicKey.encoded is X.509 SubjectPublicKeyInfo, matching the Go enrollment API.
-        return base64Url(pair.public.encoded)
+        return generator.generateKeyPair()
     }
 
     fun requestIntegrityToken(challenge: Challenge, onResult: (Evidence) -> Unit, onError: (Throwable) -> Unit) {
