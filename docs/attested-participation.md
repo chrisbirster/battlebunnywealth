@@ -47,7 +47,7 @@ The repository deliberately does **not** claim full Apple server verification ye
 
 ### Google Play Integrity
 
-The Android spike uses Play Integrity Standard requests with the server-generated `requestHash` and uses Android Keystore for the mission-signing key, preferring StrongBox where available.
+The Android spike uses Play Integrity Standard requests with the server-generated `requestHash` and uses Android Keystore for the mission-signing key, preferring StrongBox where available and explicitly falling back to the Android Keystore when StrongBox is unavailable.
 
 The Go server includes `PlayIntegrityHTTPDecoder`, which calls Google `decodeIntegrityToken` and validates the returned policy signals:
 
@@ -55,8 +55,11 @@ The Go server includes `PlayIntegrityHTTPDecoder`, which calls Google `decodeInt
 - package name matches configuration;
 - `PLAY_RECOGNIZED` is required;
 - an optional application signing-certificate allowlist can be enforced;
-- `MEETS_DEVICE_INTEGRITY` or `MEETS_STRONG_INTEGRITY` is required;
-- deployments may require `MEETS_STRONG_INTEGRITY` explicitly.
+- `MEETS_DEVICE_INTEGRITY` or `MEETS_STRONG_INTEGRITY` is required for a verified provider record;
+- only `MEETS_STRONG_INTEGRITY` sets the conservative v0.7 `hardwareBacked`/permissioned-testnet eligibility signal;
+- deployments may reject non-strong verdicts entirely with `BBWEALTH_ANDROID_REQUIRE_STRONG_INTEGRITY=1`.
+
+That distinction is deliberate: a normal device-integrity verdict is useful evidence, but v0.7 does not overstate it as proof that the separate mission-signing key is hardware-non-exportable on every Android version/device configuration.
 
 For the current executable, the Google decoder receives a short-lived OAuth bearer token through `BBWEALTH_PLAY_INTEGRITY_ACCESS_TOKEN`. Production deployment must replace this with normal service-account/ADC token acquisition and rotation.
 
@@ -136,7 +139,7 @@ prototypeEligible
 
 productionEligible
 = prototype threshold
-  AND account has an active provider-verified hardware-backed device
+  AND account has an active provider-verified hardware-backed device signal
 ```
 
 The name `productionEligible` is inherited from the prototype model, but in v0.7 it means only **eligible for permissioned non-economic testnet committee research**. Distributed production consensus remains disabled in network status and is a later milestone.
