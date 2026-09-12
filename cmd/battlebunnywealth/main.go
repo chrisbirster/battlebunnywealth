@@ -25,6 +25,11 @@ func main() {
 
 	chain := proofofplay.NewChain(time.Unix(0, 0).UTC())
 	protocol := proofofplay.NewProtocol(proofofplay.DefaultConfig(), chain)
+	authority, err := proofofplay.NewAuthorityService(time.Now, proofofplay.NewAuthorityFileStore(envOr("BBWEALTH_POP_STATE", "data/proof-of-play.json")), proofofplay.DefaultAuthorityConfig())
+	if err != nil {
+		logger.Error("open Proof-of-Play authority state", "error", err)
+		os.Exit(1)
+	}
 	gameRegistry := game.NewRegistry(time.Now, envOr("BBWEALTH_GAME_DIR", "data/players"), envOr("BBWEALTH_GAME_STATE", "data/game-state.json"))
 	identityService, err := identity.NewService(time.Now, identity.NewFileStore(envOr("BBWEALTH_IDENTITY_STATE", "data/identity.json")), identity.NewPLCResolver(nil), identity.Config{
 		RPID:           envOr("BBWEALTH_RP_ID", "localhost"),
@@ -42,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := httpserver.New(logger, protocol, gameRegistry, identityService, spa)
+	handler := httpserver.New(logger, protocol, authority, gameRegistry, identityService, spa)
 	server := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
