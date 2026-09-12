@@ -28,14 +28,18 @@ type ATProtoBinding struct {
 }
 
 type Device struct {
-	ID                string     `json:"id"`
-	Name              string     `json:"name"`
-	Platform          string     `json:"platform"`
-	PublicKeySPKI     string     `json:"publicKeySpki"`
-	Status            string     `json:"status"`
-	AttestationStatus string     `json:"attestationStatus"`
-	EnrolledAt        time.Time  `json:"enrolledAt"`
-	RevokedAt         *time.Time `json:"revokedAt,omitempty"`
+	ID                  string     `json:"id"`
+	Name                string     `json:"name"`
+	Platform            string     `json:"platform"`
+	PublicKeySPKI       string     `json:"publicKeySpki"`
+	Status              string     `json:"status"`
+	AttestationStatus   string     `json:"attestationStatus"`
+	AttestationProvider string     `json:"attestationProvider,omitempty"`
+	HardwareBacked      bool       `json:"hardwareBacked"`
+	ProductionEligible  bool       `json:"productionEligible"`
+	EnrolledAt          time.Time  `json:"enrolledAt"`
+	AttestedAt          *time.Time `json:"attestedAt,omitempty"`
+	RevokedAt           *time.Time `json:"revokedAt,omitempty"`
 }
 
 type Account struct {
