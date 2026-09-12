@@ -37,7 +37,7 @@ BBWEALTH_RP_ID=localhost
 BBWEALTH_ORIGINS=http://localhost:8080,http://localhost:5173
 ```
 
-Identity state is persisted to `data/identity.json` by default. Per-account game state lives in `data/players/<account-id>.json`.
+Identity state is persisted to `data/identity.json` by default. Per-account game state lives in `data/players/<account-id>.json`. Proof-of-Play missions and authority persist separately to `data/proof-of-play.json`.
 
 The first authenticated account can automatically claim the old single-player `data/game-state.json` file. Override paths with:
 
@@ -45,6 +45,7 @@ The first authenticated account can automatically claim the old single-player `d
 BBWEALTH_IDENTITY_STATE=/tmp/bbw-identity.json \
 BBWEALTH_GAME_DIR=/tmp/bbw-players \
 BBWEALTH_GAME_STATE=/tmp/legacy-game-state.json \
+BBWEALTH_POP_STATE=/tmp/bbw-proof-of-play.json \
 go run ./cmd/battlebunnywealth
 ```
 
@@ -56,6 +57,19 @@ BBWEALTH_ORIGINS=https://battlebunnywealth.com
 ```
 
 `data/` is intentionally gitignored.
+
+## v0.6 mission testing
+
+1. Create/sign into an account at `/account`.
+2. Enroll the current browser as a device. The private P-256 key remains in IndexedDB.
+3. Open `/proof-of-play`.
+4. Request optional network duty.
+5. Complete the mission before the five-minute expiry; the browser signs the canonical mission payload with the enrolled device key.
+6. Repeat up to the four-mission daily ceiling and inspect the authority/service record.
+
+The current browser key is still `unattested`. v0.6 may use it to exercise **prototype** authority and committee weighting, but production committee eligibility is hard-disabled until v0.7 attestation.
+
+If a browser device was enrolled before v0.6, its IndexedDB record does not contain the new cached public-key identifier used to match the local key to the server device. Re-enroll that browser once for mission testing.
 
 ## Production parity
 
@@ -76,12 +90,13 @@ The Go binary embeds whatever is currently in `web/dist`.
 
 - Prefix HTTP APIs with `/api/v1`.
 - Treat game economy mutations as server-authoritative; browser-calculated balances are never trusted.
-- Account-scoped game APIs require an authenticated passkey session.
+- Account-scoped game and personal Proof-of-Play APIs require an authenticated passkey session.
 - Browser session cookies are HttpOnly and SameSite=Strict.
 - Treat ATProto `resolved-unverified` links as display metadata only; they grant no security authority.
-- Treat v0.5 browser device keys as `unattested`; they grant no Proof-of-Play authority.
+- Treat v0.5/v0.6 browser device keys as `unattested`; they may exercise prototype authority but never production committee eligibility.
 - Keep transport DTOs JSON-friendly but protocol domain types transport-agnostic when practical.
 - Never expose private device keys.
+- Never publish raw account IDs/device public keys from the v0.6 committee prototype.
 - Version signed/protocol structures independently of REST API versions.
 - Add tests for every consensus validation rule.
 
