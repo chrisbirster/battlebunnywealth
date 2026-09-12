@@ -60,19 +60,21 @@ func TestProviderOutageReducesCommitteeLiveness(t *testing.T) {
 	if outageReport.Liveness.QuorumOnlineProbability >= baseReport.Liveness.QuorumOnlineProbability { t.Fatalf("outage liveness=%f baseline=%f", outageReport.Liveness.QuorumOnlineProbability, baseReport.Liveness.QuorumOnlineProbability) }
 }
 
-func TestDeviceChurnReducesEligiblePopulation(t *testing.T) {
+func TestDeviceChurnCanRemoveParticipantsFromEligibility(t *testing.T) {
 	baseline := quickScenario(t, "baseline", 44)
 	churn := baseline
 	churn.Name = "forced-churn"
 	for i := range churn.Cohorts {
-		churn.Cohorts[i].DailyDeviceChurnProbability = 0.08
-		churn.Cohorts[i].ReattestationDelayDays = 7
+		churn.Cohorts[i].DailyDeviceChurnProbability = 1
+		churn.Cohorts[i].ReattestationDelayDays = churn.Days + 1
 	}
 	baseReport, err := Run(baseline)
 	if err != nil { t.Fatal(err) }
 	churnReport, err := Run(churn)
 	if err != nil { t.Fatal(err) }
-	if churnReport.Population.EligibleAccounts >= baseReport.Population.EligibleAccounts { t.Fatalf("churn eligible=%d baseline=%d", churnReport.Population.EligibleAccounts, baseReport.Population.EligibleAccounts) }
+	if baseReport.Population.EligibleAccounts == 0 { t.Fatal("baseline should produce eligible participants") }
+	if churnReport.Population.EligibleAccounts != 0 { t.Fatalf("forced churn left %d eligible participants", churnReport.Population.EligibleAccounts) }
+	if churnReport.Liveness.QuorumOnlineProbability != 0 { t.Fatalf("forced churn liveness=%f", churnReport.Liveness.QuorumOnlineProbability) }
 }
 
 func TestAttackSweepGrowsConfiguredCost(t *testing.T) {
