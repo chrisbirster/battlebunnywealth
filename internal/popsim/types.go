@@ -5,16 +5,16 @@ import "github.com/chrisbirster/battlebunnywealth/internal/proofofplay"
 const ModelVersion = "proof-of-play-sim/0.8"
 
 type Policy struct {
-	MissionAward            int64 `json:"missionAward"`
-	MaxAuthority            int64 `json:"maxAuthority"`
-	MaxMissionsPerDay       int   `json:"maxMissionsPerDay"`
-	EligibilityThreshold    int64 `json:"eligibilityThreshold"`
-	DecayGraceDays          int   `json:"decayGraceDays"`
-	DecayPerDayBasisPoints  int64 `json:"decayPerDayBasisPoints"`
-	NewcomerRampDays        int   `json:"newcomerRampDays"`
-	CommitteeSize           int   `json:"committeeSize"`
-	QuorumNumerator         int   `json:"quorumNumerator"`
-	QuorumDenominator       int   `json:"quorumDenominator"`
+	MissionAward           int64 `json:"missionAward"`
+	MaxAuthority           int64 `json:"maxAuthority"`
+	MaxMissionsPerDay      int   `json:"maxMissionsPerDay"`
+	EligibilityThreshold   int64 `json:"eligibilityThreshold"`
+	DecayGraceDays         int   `json:"decayGraceDays"`
+	DecayPerDayBasisPoints int64 `json:"decayPerDayBasisPoints"`
+	NewcomerRampDays       int   `json:"newcomerRampDays"`
+	CommitteeSize          int   `json:"committeeSize"`
+	QuorumNumerator        int   `json:"quorumNumerator"`
+	QuorumDenominator      int   `json:"quorumDenominator"`
 }
 
 func DefaultPolicy() Policy {
@@ -38,11 +38,14 @@ type Cohort struct {
 	Name                         string  `json:"name"`
 	Accounts                     int     `json:"accounts"`
 	Adversarial                  bool    `json:"adversarial"`
+	StartDay                     int     `json:"startDay"`
 	DevicesPerAccount            int     `json:"devicesPerAccount"`
 	AttestedFraction             float64 `json:"attestedFraction"`
 	DailyActiveProbability       float64 `json:"dailyActiveProbability"`
 	MissionCompletionProbability float64 `json:"missionCompletionProbability"`
 	CommitteeOnlineProbability   float64 `json:"committeeOnlineProbability"`
+	DailyDeviceChurnProbability  float64 `json:"dailyDeviceChurnProbability"`
+	ReattestationDelayDays       int     `json:"reattestationDelayDays"`
 	Provider                     string  `json:"provider"`
 	DeviceCostUSD                float64 `json:"deviceCostUsd"`
 	AccountCostUSD               float64 `json:"accountCostUsd"`
@@ -95,16 +98,16 @@ type CaptureMetrics struct {
 }
 
 type LivenessMetrics struct {
-	MeanOnlineSeats        float64 `json:"meanOnlineSeats"`
+	MeanOnlineSeats         float64 `json:"meanOnlineSeats"`
 	QuorumOnlineProbability float64 `json:"quorumOnlineProbability"`
 }
 
 type CostMetrics struct {
-	ConfiguredAdversaryHardwareUSD float64 `json:"configuredAdversaryHardwareUsd"`
-	ConfiguredAdversaryAccountsUSD float64 `json:"configuredAdversaryAccountsUsd"`
+	ConfiguredAdversaryHardwareUSD  float64 `json:"configuredAdversaryHardwareUsd"`
+	ConfiguredAdversaryAccountsUSD  float64 `json:"configuredAdversaryAccountsUsd"`
 	ConfiguredAdversaryOperatingUSD float64 `json:"configuredAdversaryOperatingUsd"`
-	ConfiguredAdversaryTotalUSD    float64 `json:"configuredAdversaryTotalUsd"`
-	MedianDaysToEligibility        float64 `json:"medianDaysToEligibility"`
+	ConfiguredAdversaryTotalUSD     float64 `json:"configuredAdversaryTotalUsd"`
+	MedianDaysToEligibility         float64 `json:"medianDaysToEligibility"`
 }
 
 type Report struct {
