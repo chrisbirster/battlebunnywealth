@@ -14,14 +14,49 @@ import (
 	"github.com/chrisbirster/battlebunnywealth/internal/proofofplay"
 )
 
-type proofOfPlay interface { Status(time.Time) proofofplay.NetworkStatus; Head() proofofplay.Block }
+type proofOfPlay interface {
+	Status(time.Time) proofofplay.NetworkStatus
+	Head() proofofplay.Block
+	CurrentEpoch(time.Time) uint64
+}
+
 const sessionCookieName = "bbw_session"
 
-func New(logger *slog.Logger, protocol proofOfPlay, games *game.Registry, auth *identity.Service, spa http.Handler) http.Handler {
+func New(logger *slog.Logger, protocol proofOfPlay, authority *proofofplay.AuthorityService, games *game.Registry, auth *identity.Service, spa http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/healthz", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, http.StatusOK, map[string]string{"status":"ok","service":"battle-bunny-wealth","version":"dev"}) })
 	mux.HandleFunc("GET /api/v1/proof-of-play", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, http.StatusOK, protocol.Status(time.Now().UTC())) })
 	mux.HandleFunc("GET /api/v1/proof-of-play/blocks/head", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, http.StatusOK, protocol.Head()) })
+	mux.HandleFunc("GET /api/v1/proof-of-play/me", func(w http.ResponseWriter, r *http.Request) {
+		account, err := currentAccount(auth, r)
+		if err != nil { writeIdentityError(w, err); return }
+		snapshot, err := authority.Snapshot(account.ID)
+		if err != nil { writeProofError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
+	mux.HandleFunc("POST /api/v1/proof-of-play/missions", func(w http.ResponseWriter, r *http.Request) {
+		account, err := currentAccount(auth, r)
+		if err != nil { writeIdentityError(w, err); return }
+		var body struct { DeviceID string `json:"deviceId"` }
+		if err := decodeJSON(w, r, &body); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error":err.Error()}); return }
+		device, err := activeDevice(account, body.DeviceID)
+		if err != nil { writeIdentityError(w, err); return }
+		now := time.Now().UTC()
+		snapshot, err := authority.IssueMission(account.ID, device.ID, device.PublicKeySPKI, device.AttestationStatus, protocol.Head().Hash, protocol.CurrentEpoch(now))
+		if err != nil { writeProofError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
+	mux.HandleFunc("POST /api/v1/proof-of-play/missions/{id}/complete", func(w http.ResponseWriter, r *http.Request) {
+		account, err := currentAccount(auth, r)
+		if err != nil { writeIdentityError(w, err); return }
+		var body struct { DeviceID string `json:"deviceId"`; Signature string `json:"signature"` }
+		if err := decodeJSON(w, r, &body); err != nil { writeJSON(w, http.StatusBadRequest, map[string]string{"error":err.Error()}); return }
+		device, err := activeDevice(account, body.DeviceID)
+		if err != nil { writeIdentityError(w, err); return }
+		snapshot, err := authority.CompleteMission(account.ID, device.ID, device.PublicKeySPKI, r.PathValue("id"), body.Signature)
+		if err != nil { writeProofError(w, err); return }
+		writeJSON(w, http.StatusOK, snapshot)
+	})
 
 	mux.HandleFunc("GET /api/v1/auth/me", func(w http.ResponseWriter, r *http.Request) { account, err := currentAccount(auth, r); if err != nil { writeIdentityError(w, err); return }; writeJSON(w, http.StatusOK, account) })
 	mux.HandleFunc("POST /api/v1/auth/passkey/register/begin", func(w http.ResponseWriter, r *http.Request) { var body struct { DisplayName string `json:"displayName"` }; if err := decodeJSON(w,r,&body); err != nil { writeJSON(w,http.StatusBadRequest,map[string]string{"error":err.Error()}); return }; accountID := ""; if account, err := currentAccount(auth,r); err == nil { accountID = account.ID }; result, err := auth.BeginRegistration(requestOrigin(r), body.DisplayName, accountID); if err != nil { writeIdentityError(w,err); return }; writeJSON(w,http.StatusOK,result) })
@@ -49,6 +84,15 @@ func New(logger *slog.Logger, protocol proofOfPlay, games *game.Registry, auth *
 	return requestLog(logger, securityHeaders(originGuard(auth,mux)))
 }
 
+func activeDevice(account identity.AccountView, id string) (identity.Device, error) {
+	for _, device := range account.Devices {
+		if device.ID == id && device.Status == identity.DeviceStatusActive {
+			return device, nil
+		}
+	}
+	return identity.Device{}, identity.ErrUnknownDevice
+}
+
 func currentAccount(auth *identity.Service, r *http.Request) (identity.AccountView,error) { return auth.Authenticate(sessionToken(r)) }
 func sessionToken(r *http.Request) string { cookie,err:=r.Cookie(sessionCookieName);if err!=nil{return ""};return cookie.Value }
 func setSessionCookie(w http.ResponseWriter,r *http.Request,token string,ttl time.Duration){http.SetCookie(w,&http.Cookie{Name:sessionCookieName,Value:token,Path:"/",HttpOnly:true,Secure:strings.HasPrefix(requestOrigin(r),"https://"),SameSite:http.SameSiteStrictMode,MaxAge:int(ttl/time.Second)})}
@@ -57,6 +101,7 @@ func requestOrigin(r *http.Request) string { if origin:=strings.TrimRight(r.Head
 func originGuard(auth *identity.Service,next http.Handler) http.Handler { return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){if r.Method!=http.MethodGet&&r.Method!=http.MethodHead&&r.Method!=http.MethodOptions{if origin:=r.Header.Get("Origin");origin!=""&&!auth.AllowedOrigin(origin){writeJSON(w,http.StatusForbidden,map[string]string{"error":"origin not allowed"});return}};next.ServeHTTP(w,r)}) }
 func decodeJSON(w http.ResponseWriter,r *http.Request,value any) error{r.Body=http.MaxBytesReader(w,r.Body,64<<10);decoder:=json.NewDecoder(r.Body);decoder.DisallowUnknownFields();return decoder.Decode(value)}
 func writeIdentityError(w http.ResponseWriter,err error){status:=http.StatusInternalServerError;switch{case errors.Is(err,identity.ErrUnauthorized):status=http.StatusUnauthorized;case errors.Is(err,identity.ErrInvalidCeremony),errors.Is(err,identity.ErrInvalidCredential),errors.Is(err,identity.ErrInvalidDisplayName),errors.Is(err,identity.ErrInvalidDevice),errors.Is(err,identity.ErrInvalidDID),errors.Is(err,identity.ErrUnsupportedDIDMethod):status=http.StatusBadRequest;case errors.Is(err,identity.ErrCredentialExists),errors.Is(err,identity.ErrCounterRollback):status=http.StatusConflict;case errors.Is(err,identity.ErrUnknownDevice),errors.Is(err,identity.ErrUnknownCredential):status=http.StatusNotFound};message:=err.Error();if status==http.StatusInternalServerError{message="internal server error"};writeJSON(w,status,map[string]string{"error":message})}
+func writeProofError(w http.ResponseWriter,err error){status:=http.StatusInternalServerError;switch{case errors.Is(err,proofofplay.ErrMissionLimit):status=http.StatusTooManyRequests;case errors.Is(err,proofofplay.ErrMissionNotFound):status=http.StatusNotFound;case errors.Is(err,proofofplay.ErrMissionExpired):status=http.StatusGone;case errors.Is(err,proofofplay.ErrMissionCompleted):status=http.StatusConflict;case errors.Is(err,proofofplay.ErrMissionBinding),errors.Is(err,proofofplay.ErrInvalidMissionSignature),errors.Is(err,proofofplay.ErrInvalidMissionDevice):status=http.StatusBadRequest};message:=err.Error();if status==http.StatusInternalServerError{message="internal server error"};writeJSON(w,status,map[string]string{"error":message})}
 func writeGameError(w http.ResponseWriter,err error){status:=http.StatusInternalServerError;switch{case errors.Is(err,game.ErrInvalidProfile),errors.Is(err,game.ErrInvalidWarren):status=http.StatusBadRequest;case errors.Is(err,game.ErrUnknownBusiness):status=http.StatusNotFound;case errors.Is(err,game.ErrInsufficientFunds),errors.Is(err,game.ErrTurnInLocked),errors.Is(err,game.ErrStoryComplete):status=http.StatusConflict};message:=err.Error();if status==http.StatusInternalServerError{message="internal server error"};writeJSON(w,status,map[string]string{"error":message})}
 func writeJSON(w http.ResponseWriter,status int,value any){w.Header().Set("Content-Type","application/json; charset=utf-8");w.WriteHeader(status);_ = json.NewEncoder(w).Encode(value)}
 func securityHeaders(next http.Handler) http.Handler{return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Header().Set("X-Content-Type-Options","nosniff");w.Header().Set("Referrer-Policy","strict-origin-when-cross-origin");w.Header().Set("X-Frame-Options","DENY");next.ServeHTTP(w,r)})}
