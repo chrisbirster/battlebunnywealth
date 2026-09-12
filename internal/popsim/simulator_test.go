@@ -64,6 +64,7 @@ func TestDeviceChurnCanRemoveParticipantsFromEligibility(t *testing.T) {
 	baseline := quickScenario(t, "baseline", 44)
 	churn := baseline
 	churn.Name = "forced-churn"
+	churn.Cohorts = append([]Cohort(nil), baseline.Cohorts...)
 	for i := range churn.Cohorts {
 		churn.Cohorts[i].DailyDeviceChurnProbability = 1
 		churn.Cohorts[i].ReattestationDelayDays = churn.Days + 1
