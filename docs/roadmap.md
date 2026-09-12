@@ -87,16 +87,23 @@ The v0.5 WebAuthn verifier is deliberately narrow alpha code and requires securi
 
 The v0.6 constants and selection algorithm are explicit research parameters for attack simulation, not frozen consensus rules.
 
-## v0.7 — Attested participation prototype
+## v0.7 — Attested participation prototype — implemented on `dev`
 
-- Native iOS App Attest spike.
-- Native Android Play Integrity spike.
-- Hardware-backed device signing.
-- Upgrade mission/device qualification from `unattested` prototype participation to verified provider-backed evidence.
-- Challenge/replay defense across attestation assertions.
-- Provider adapter abstraction and outage policy.
-- Multi-device diminishing-weight experiment.
-- Define the first conditions under which `productionEligible` could become true on a non-economic test network.
+- Provider-agnostic, persistent, single-use attestation challenge service.
+- Attestation challenge bound to the enrolled P-256 device key through a SHA-256 key commitment and canonical request binding.
+- Native iOS App Attest + Secure Enclave mission-key source spike.
+- Native Android Play Integrity + Android Keystore/StrongBox mission-key source spike.
+- Apple App Attest verifier boundary that fails closed until a concrete server validator is configured.
+- Google Play Integrity REST decoder and policy checks for request hash, package, app recognition, signing certificate, and device integrity.
+- Provider evidence projected into account device records without merging account identity and device identity.
+- First permissioned-testnet eligibility rule: authority threshold plus at least one active verified hardware-backed device signal.
+- Deterministic attested committee-selection path for future testnet work while distributed production consensus remains disabled.
+- Multi-device authority awards reduced to 100% / 25% / 10% / 2% for first / second / third / later active devices.
+- Concurrent replay defense: the attestation challenge is persisted as consumed before external provider verification.
+- Development provider available only under dev controls and permanently excluded from attested eligibility.
+- Account UI displays provider, attestation status, hardware-backed signal, testnet eligibility, and device weight.
+
+The native iOS/Android files are integration spikes rather than CI-built mobile applications. App Attest still needs a concrete reviewed server validator, and production Google integration needs renewable OAuth credentials rather than the development static-token source.
 
 ## v0.8 — Proof-of-Play simulator
 
