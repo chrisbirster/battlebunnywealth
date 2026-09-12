@@ -58,30 +58,34 @@ func (p *Protocol) CurrentEpoch(now time.Time) uint64 {
 }
 
 type NetworkStatus struct {
-	Protocol                 string   `json:"protocol"`
-	Phase                    string   `json:"phase"`
-	Epoch                    uint64   `json:"epoch"`
-	ChainHeight              uint64   `json:"chainHeight"`
-	CommitteeSize            int      `json:"committeeSize"`
-	Quorum                   string   `json:"quorum"`
-	EpochSeconds             int64    `json:"epochSeconds"`
-	ChallengeTTLSeconds      int64    `json:"challengeTtlSeconds"`
-	MaxHumanChallengesPerDay int      `json:"maxHumanChallengesPerDay"`
-	AttestationProviders     []string `json:"attestationProviders"`
+	Protocol                    string   `json:"protocol"`
+	Phase                       string   `json:"phase"`
+	Epoch                       uint64   `json:"epoch"`
+	ChainHeight                 uint64   `json:"chainHeight"`
+	CommitteeSize               int      `json:"committeeSize"`
+	Quorum                      string   `json:"quorum"`
+	EpochSeconds                int64    `json:"epochSeconds"`
+	ChallengeTTLSeconds         int64    `json:"challengeTtlSeconds"`
+	MaxHumanChallengesPerDay    int      `json:"maxHumanChallengesPerDay"`
+	AttestationProviders        []string `json:"attestationProviders"`
+	AuthorityMode               string   `json:"authorityMode"`
+	ProductionCommitteeEnabled  bool     `json:"productionCommitteeEnabled"`
 }
 
 func (p *Protocol) Status(now time.Time) NetworkStatus {
 	return NetworkStatus{
-		Protocol:                 "proof-of-play/0",
-		Phase:                    "protocol-scaffold",
-		Epoch:                    p.CurrentEpoch(now),
-		ChainHeight:              p.chain.Height(),
-		CommitteeSize:            p.config.CommitteeSize,
-		Quorum:                   fmt.Sprintf("%d/%d", p.config.QuorumNumerator, p.config.QuorumDenominator),
-		EpochSeconds:             int64(p.config.EpochDuration / time.Second),
-		ChallengeTTLSeconds:      int64(p.config.ChallengeTTL / time.Second),
-		MaxHumanChallengesPerDay: p.config.MaxHumanChallengesPerDay,
-		AttestationProviders:     []string{string(AttestationApple), string(AttestationGoogle)},
+		Protocol:                    "proof-of-play/0.6",
+		Phase:                       "missions-authority-prototype",
+		Epoch:                       p.CurrentEpoch(now),
+		ChainHeight:                 p.chain.Height(),
+		CommitteeSize:               p.config.CommitteeSize,
+		Quorum:                      fmt.Sprintf("%d/%d", p.config.QuorumNumerator, p.config.QuorumDenominator),
+		EpochSeconds:                int64(p.config.EpochDuration / time.Second),
+		ChallengeTTLSeconds:         int64(p.config.ChallengeTTL / time.Second),
+		MaxHumanChallengesPerDay:    p.config.MaxHumanChallengesPerDay,
+		AttestationProviders:        []string{string(AttestationApple), string(AttestationGoogle)},
+		AuthorityMode:               "bounded-decaying-prototype",
+		ProductionCommitteeEnabled:  false,
 	}
 }
 
