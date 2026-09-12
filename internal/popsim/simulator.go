@@ -12,18 +12,22 @@ import (
 var ErrInvalidScenario = errors.New("invalid Proof-of-Play simulation scenario")
 
 type actor struct {
-	cohortIndex               int
-	adversarial               bool
-	provider                  string
-	attested                  bool
-	devices                   int
-	dailyActiveProbability    float64
-	missionCompletionProbability float64
-	committeeOnlineProbability float64
-	score                     int64
-	firstMissionDay           int
-	lastMissionDay            int
-	eligibilityDay            int
+	cohortIndex                     int
+	adversarial                     bool
+	provider                        string
+	attested                        bool
+	startDay                        int
+	devices                         int
+	dailyActiveProbability          float64
+	missionCompletionProbability   float64
+	committeeOnlineProbability     float64
+	dailyDeviceChurnProbability    float64
+	reattestationDelayDays         int
+	unavailableUntilDay             int
+	score                           int64
+	firstMissionDay                 int
+	lastMissionDay                  int
+	eligibilityDay                  int
 }
 
 type weightedCandidate struct {
@@ -43,8 +47,18 @@ func Run(s Scenario) (Report, error) {
 		googleUp := rng.Float64() < s.GoogleAvailability
 		for i := range actors {
 			a := &actors[i]
+			if day < a.startDay {
+				continue
+			}
 			applyDecay(a, day, s.Policy)
-			if rng.Float64() >= a.dailyActiveProbability {
+			if a.attested && day >= a.unavailableUntilDay && a.dailyDeviceChurnProbability > 0 && rng.Float64() < a.dailyDeviceChurnProbability {
+				delay := a.reattestationDelayDays
+				if delay < 1 {
+					delay = 1
+				}
+				a.unavailableUntilDay = day + delay
+			}
+			if day < a.unavailableUntilDay || rng.Float64() >= a.dailyActiveProbability {
 				continue
 			}
 			if a.attested && !providerUp(a.provider, appleUp, googleUp) {
@@ -56,8 +70,6 @@ func Run(s Scenario) (Report, error) {
 				}
 				ordinal := 0
 				if a.devices > 1 {
-					// Real users may perform a mission from whichever active device is in hand.
-					// A phone farm with one account/device naturally remains at ordinal zero.
 					ordinal = rng.Intn(a.devices)
 				}
 				award := weightedAward(s.Policy.MissionAward, ordinal)
@@ -76,7 +88,7 @@ func Run(s Scenario) (Report, error) {
 		}
 	}
 
-	population := populationMetrics(actors, s.Policy)
+	population := populationMetrics(actors, s.Days-1, s.Policy)
 	capture, liveness := committeeMetrics(actors, s, rng)
 	cost := costMetrics(actors, s)
 	warnings := warningsFor(s, population, capture, liveness)
@@ -88,7 +100,7 @@ func validateScenario(s Scenario) error {
 		return ErrInvalidScenario
 	}
 	p := s.Policy
-	if p.MissionAward <= 0 || p.MaxAuthority <= 0 || p.MaxMissionsPerDay <= 0 || p.EligibilityThreshold < 0 || p.NewcomerRampDays <= 0 || p.CommitteeSize <= 0 || p.QuorumNumerator <= 0 || p.QuorumDenominator <= 0 || p.QuorumNumerator > p.QuorumDenominator {
+	if p.MissionAward <= 0 || p.MaxAuthority <= 0 || p.MaxMissionsPerDay <= 0 || p.EligibilityThreshold < 0 || p.DecayGraceDays < 0 || p.DecayPerDayBasisPoints < 0 || p.DecayPerDayBasisPoints >= 10000 || p.NewcomerRampDays <= 0 || p.CommitteeSize <= 0 || p.QuorumNumerator <= 0 || p.QuorumDenominator <= 0 || p.QuorumNumerator > p.QuorumDenominator {
 		return ErrInvalidScenario
 	}
 	if !probability(s.AppleAvailability) || !probability(s.GoogleAvailability) {
@@ -96,7 +108,7 @@ func validateScenario(s Scenario) error {
 	}
 	accounts := 0
 	for _, c := range s.Cohorts {
-		if c.Name == "" || c.Accounts < 0 || c.DevicesPerAccount <= 0 || !probability(c.AttestedFraction) || !probability(c.DailyActiveProbability) || !probability(c.MissionCompletionProbability) || !probability(c.CommitteeOnlineProbability) {
+		if c.Name == "" || c.Accounts < 0 || c.StartDay < 0 || c.DevicesPerAccount <= 0 || c.ReattestationDelayDays < 0 || !probability(c.AttestedFraction) || !probability(c.DailyActiveProbability) || !probability(c.MissionCompletionProbability) || !probability(c.CommitteeOnlineProbability) || !probability(c.DailyDeviceChurnProbability) {
 			return ErrInvalidScenario
 		}
 		accounts += c.Accounts
@@ -126,10 +138,13 @@ func buildActors(s Scenario, rng *rand.Rand) []actor {
 				adversarial: cohort.Adversarial,
 				provider: cohort.Provider,
 				attested: attested,
+				startDay: cohort.StartDay,
 				devices: cohort.DevicesPerAccount,
 				dailyActiveProbability: cohort.DailyActiveProbability,
 				missionCompletionProbability: cohort.MissionCompletionProbability,
 				committeeOnlineProbability: cohort.CommitteeOnlineProbability,
+				dailyDeviceChurnProbability: cohort.DailyDeviceChurnProbability,
+				reattestationDelayDays: cohort.ReattestationDelayDays,
 				firstMissionDay: -1,
 				lastMissionDay: -1,
 				eligibilityDay: -1,
@@ -140,10 +155,7 @@ func buildActors(s Scenario, rng *rand.Rand) []actor {
 }
 
 func applyDecay(a *actor, day int, p Policy) {
-	if a.score <= 0 || a.lastMissionDay < 0 {
-		return
-	}
-	if day <= a.lastMissionDay+p.DecayGraceDays {
+	if a.score <= 0 || a.lastMissionDay < 0 || day <= a.lastMissionDay+p.DecayGraceDays {
 		return
 	}
 	reduction := a.score * p.DecayPerDayBasisPoints / 10000
@@ -166,7 +178,7 @@ func weightedAward(base int64, deviceOrdinal int) int64 {
 }
 
 func committeeWeight(a actor, day int, p Policy) int64 {
-	if !a.attested || a.score < p.EligibilityThreshold || a.firstMissionDay < 0 {
+	if day < a.startDay || day < a.unavailableUntilDay || !a.attested || a.score < p.EligibilityThreshold || a.firstMissionDay < 0 {
 		return 0
 	}
 	elapsed := day - a.firstMissionDay
@@ -196,23 +208,15 @@ func providerUp(provider string, appleUp, googleUp bool) bool {
 	}
 }
 
-func populationMetrics(actors []actor, p Policy) PopulationMetrics {
+func populationMetrics(actors []actor, day int, p Policy) PopulationMetrics {
 	var m PopulationMetrics
 	var honestScore, adversarialScore int64
 	var honestCount, adversarialCount int
 	weights := make([]float64, 0, len(actors))
-	day := 0
-	for _, a := range actors {
-		if a.lastMissionDay > day {
-			day = a.lastMissionDay
-		}
-	}
 	for _, a := range actors {
 		m.Accounts++
 		m.TotalDevices += a.devices
-		if a.attested {
-			m.AttestedAccounts++
-		}
+		if a.attested { m.AttestedAccounts++ }
 		if a.adversarial {
 			m.AdversarialAccounts++
 			m.AdversarialDevices += a.devices
@@ -233,15 +237,9 @@ func populationMetrics(actors []actor, p Policy) PopulationMetrics {
 			}
 		}
 	}
-	if m.TotalCommitteeWeight > 0 {
-		m.AdversarialWeightShare = float64(m.AdversarialCommitteeWeight) / float64(m.TotalCommitteeWeight)
-	}
-	if honestCount > 0 {
-		m.MeanHonestAuthority = float64(honestScore) / float64(honestCount)
-	}
-	if adversarialCount > 0 {
-		m.MeanAdversarialAuthority = float64(adversarialScore) / float64(adversarialCount)
-	}
+	if m.TotalCommitteeWeight > 0 { m.AdversarialWeightShare = float64(m.AdversarialCommitteeWeight) / float64(m.TotalCommitteeWeight) }
+	if honestCount > 0 { m.MeanHonestAuthority = float64(honestScore) / float64(honestCount) }
+	if adversarialCount > 0 { m.MeanAdversarialAuthority = float64(adversarialScore) / float64(adversarialCount) }
 	m.WeightGini = gini(weights)
 	m.WeightHHI = hhi(weights)
 	return m
@@ -262,54 +260,33 @@ func committeeMetrics(actors []actor, s Scenario, rng *rand.Rand) (CaptureMetric
 		candidates := make([]weightedCandidate, 0, len(actors))
 		for i, a := range actors {
 			weight := committeeWeight(a, day, s.Policy)
-			if weight <= 0 || !providerUp(a.provider, appleUp, googleUp) {
-				continue
-			}
+			if weight <= 0 || !providerUp(a.provider, appleUp, googleUp) { continue }
 			u := rng.Float64()
-			if u == 0 {
-				u = math.SmallestNonzeroFloat64
-			}
-			// Exponential-race weighted sampling without replacement.
+			if u == 0 { u = math.SmallestNonzeroFloat64 }
 			candidates = append(candidates, weightedCandidate{actorIndex: i, key: -math.Log(u) / float64(weight)})
 		}
 		sort.Slice(candidates, func(i, j int) bool { return candidates[i].key < candidates[j].key })
 		seats := s.Policy.CommitteeSize
-		if len(candidates) < seats {
-			seats = len(candidates)
-		}
+		if len(candidates) < seats { seats = len(candidates) }
 		adversarialSeats, onlineSeats := 0, 0
 		for seat := 0; seat < seats; seat++ {
 			a := actors[candidates[seat].actorIndex]
-			if a.adversarial {
-				adversarialSeats++
-			}
-			if rng.Float64() < a.committeeOnlineProbability {
-				onlineSeats++
-			}
+			if a.adversarial { adversarialSeats++ }
+			if rng.Float64() < a.committeeOnlineProbability { onlineSeats++ }
 		}
 		totalAdversarialSeats += adversarialSeats
 		totalOnlineSeats += onlineSeats
 		if adversarialSeats >= blocking {
 			blockingHits++
 			blockingStreak++
-			if blockingStreak > maxBlockingStreak {
-				maxBlockingStreak = blockingStreak
-			}
-		} else {
-			blockingStreak = 0
-		}
+			if blockingStreak > maxBlockingStreak { maxBlockingStreak = blockingStreak }
+		} else { blockingStreak = 0 }
 		if adversarialSeats >= quorum {
 			finalityHits++
 			finalityStreak++
-			if finalityStreak > maxFinalityStreak {
-				maxFinalityStreak = finalityStreak
-			}
-		} else {
-			finalityStreak = 0
-		}
-		if onlineSeats >= quorum {
-			quorumOnlineHits++
-		}
+			if finalityStreak > maxFinalityStreak { maxFinalityStreak = finalityStreak }
+		} else { finalityStreak = 0 }
+		if onlineSeats >= quorum { quorumOnlineHits++ }
 	}
 
 	trials := float64(s.CommitteeTrials)
@@ -332,10 +309,7 @@ func committeeMetrics(actors []actor, s Scenario, rng *rand.Rand) (CaptureMetric
 		MaxFinalityCaptureStreak: maxFinalityStreak,
 		MeanAdversarialSeats: float64(totalAdversarialSeats) / trials,
 	}
-	liveness := LivenessMetrics{
-		MeanOnlineSeats: float64(totalOnlineSeats) / trials,
-		QuorumOnlineProbability: float64(quorumOnlineHits) / trials,
-	}
+	liveness := LivenessMetrics{MeanOnlineSeats: float64(totalOnlineSeats) / trials, QuorumOnlineProbability: float64(quorumOnlineHits) / trials}
 	return capture, liveness
 }
 
@@ -343,16 +317,12 @@ func costMetrics(actors []actor, s Scenario) CostMetrics {
 	var m CostMetrics
 	eligibilityDays := make([]int, 0)
 	for cohortIndex, cohort := range s.Cohorts {
-		if !cohort.Adversarial {
-			continue
-		}
+		if !cohort.Adversarial { continue }
 		m.ConfiguredAdversaryHardwareUSD += float64(cohort.Accounts*cohort.DevicesPerAccount) * cohort.DeviceCostUSD
 		m.ConfiguredAdversaryAccountsUSD += float64(cohort.Accounts) * cohort.AccountCostUSD
 		m.ConfiguredAdversaryOperatingUSD += float64(cohort.Accounts) * cohort.MonthlyOperatingCostUSD * float64(s.Days) / 30
 		for _, a := range actors {
-			if a.cohortIndex == cohortIndex && a.eligibilityDay >= 0 {
-				eligibilityDays = append(eligibilityDays, a.eligibilityDay+1)
-			}
+			if a.cohortIndex == cohortIndex && a.eligibilityDay >= 0 { eligibilityDays = append(eligibilityDays, a.eligibilityDay-a.startDay+1) }
 		}
 	}
 	m.ConfiguredAdversaryTotalUSD = m.ConfiguredAdversaryHardwareUSD + m.ConfiguredAdversaryAccountsUSD + m.ConfiguredAdversaryOperatingUSD
@@ -361,44 +331,26 @@ func costMetrics(actors []actor, s Scenario) CostMetrics {
 	} else {
 		sort.Ints(eligibilityDays)
 		mid := len(eligibilityDays) / 2
-		if len(eligibilityDays)%2 == 0 {
-			m.MedianDaysToEligibility = float64(eligibilityDays[mid-1]+eligibilityDays[mid]) / 2
-		} else {
-			m.MedianDaysToEligibility = float64(eligibilityDays[mid])
-		}
+		if len(eligibilityDays)%2 == 0 { m.MedianDaysToEligibility = float64(eligibilityDays[mid-1]+eligibilityDays[mid]) / 2 } else { m.MedianDaysToEligibility = float64(eligibilityDays[mid]) }
 	}
 	return m
 }
 
 func warningsFor(s Scenario, p PopulationMetrics, c CaptureMetrics, l LivenessMetrics) []string {
 	warnings := []string{}
-	if p.EligibleAccounts < s.Policy.CommitteeSize {
-		warnings = append(warnings, "eligible population is smaller than the target committee")
-	}
-	if p.AdversarialWeightShare >= 1.0/3.0 {
-		warnings = append(warnings, "adversarial committee weight is at or above one third")
-	}
-	if c.BlockingCaptureProbability > 0.01 {
-		warnings = append(warnings, "blocking committee capture exceeds one percent per draw")
-	}
-	if c.FinalityCaptureProbability > 0 {
-		warnings = append(warnings, "adversary reached finality-control threshold in the sampled committees")
-	}
-	if l.QuorumOnlineProbability < 0.99 {
-		warnings = append(warnings, "committee online-quorum probability is below 99 percent")
-	}
-	if s.AppleAvailability < 1 || s.GoogleAvailability < 1 {
-		warnings = append(warnings, "provider outage policy is modeled as fail-closed eligibility for the affected provider")
-	}
+	if p.EligibleAccounts < s.Policy.CommitteeSize { warnings = append(warnings, "eligible population is smaller than the target committee") }
+	if p.AdversarialWeightShare >= 1.0/3.0 { warnings = append(warnings, "adversarial committee weight is at or above one third") }
+	if c.BlockingCaptureProbability > 0.01 { warnings = append(warnings, "blocking committee capture exceeds one percent per draw") }
+	if c.FinalityCaptureProbability > 0 { warnings = append(warnings, "adversary reached finality-control threshold in the sampled committees") }
+	if l.QuorumOnlineProbability < 0.99 { warnings = append(warnings, "committee online-quorum probability is below 99 percent") }
+	if s.AppleAvailability < 1 || s.GoogleAvailability < 1 { warnings = append(warnings, "provider outage policy is modeled as fail-closed eligibility for the affected provider") }
 	return warnings
 }
 
 func ceilDiv(n, d int) int { return (n + d - 1) / d }
 
 func wilson(successes, trials int) (float64, float64) {
-	if trials == 0 {
-		return 0, 0
-	}
+	if trials == 0 { return 0, 0 }
 	z := 1.959963984540054
 	n := float64(trials)
 	p := float64(successes) / n
@@ -416,10 +368,7 @@ func gini(values []float64) float64 {
 	v := append([]float64(nil), values...)
 	sort.Float64s(v)
 	var sum, weighted float64
-	for i, x := range v {
-		sum += x
-		weighted += float64(i+1) * x
-	}
+	for i, x := range v { sum += x; weighted += float64(i+1) * x }
 	if sum == 0 { return 0 }
 	n := float64(len(v))
 	return (2*weighted)/(n*sum) - (n+1)/n
@@ -430,9 +379,6 @@ func hhi(values []float64) float64 {
 	for _, v := range values { sum += v }
 	if sum == 0 { return 0 }
 	var out float64
-	for _, v := range values {
-		share := v / sum
-		out += share * share
-	}
+	for _, v := range values { share := v / sum; out += share * share }
 	return out
 }
