@@ -26,7 +26,10 @@ func main() {
 	chain := proofofplay.NewChain(time.Unix(0, 0).UTC())
 	protocol := proofofplay.NewProtocol(proofofplay.DefaultConfig(), chain)
 	authority, err := proofofplay.NewAuthorityService(time.Now, proofofplay.NewAuthorityFileStore(envOr("BBWEALTH_POP_STATE", "data/proof-of-play.json")), proofofplay.DefaultAuthorityConfig())
-	if err != nil { logger.Error("open Proof-of-Play authority state", "error", err); os.Exit(1) }
+	if err != nil {
+		logger.Error("open Proof-of-Play authority state", "error", err)
+		os.Exit(1)
+	}
 
 	attConfig := proofofplay.DefaultAttestationConfig()
 	attConfig.AppleBundleID = os.Getenv("BBWEALTH_APPLE_BUNDLE_ID")
@@ -35,21 +38,55 @@ func main() {
 	attConfig.AndroidPackageName = os.Getenv("BBWEALTH_ANDROID_PACKAGE")
 	attConfig.AndroidAllowedCertificates = splitCSV(os.Getenv("BBWEALTH_ANDROID_CERTIFICATES"))
 	attConfig.AndroidRequireStrongIntegrity = os.Getenv("BBWEALTH_ANDROID_REQUIRE_STRONG_INTEGRITY") == "1"
-	providers := []proofofplay.AttestationProviderVerifier{
-		proofofplay.AppleAppAttestVerifier{Config: attConfig},
-		proofofplay.GooglePlayIntegrityVerifier{Config: attConfig, Decoder: proofofplay.PlayIntegrityHTTPDecoder{Tokens: proofofplay.StaticAccessToken(os.Getenv("BBWEALTH_PLAY_INTEGRITY_ACCESS_TOKEN"))}},
+
+	var appleValidator proofofplay.AppleAttestationValidator
+	if rootPath := strings.TrimSpace(os.Getenv("BBWEALTH_APPLE_ATTEST_ROOT_CA")); rootPath != "" {
+		rootPEM, readErr := os.ReadFile(rootPath)
+		if readErr != nil {
+			logger.Error("read Apple App Attest root CA", "error", readErr)
+			os.Exit(1)
+		}
+		appleValidator, err = proofofplay.NewAppleAppAttestCertificateValidator(rootPEM)
+		if err != nil {
+			logger.Error("configure Apple App Attest validator", "error", err)
+			os.Exit(1)
+		}
 	}
-	if os.Getenv("BBWEALTH_DEV_CONTROLS") == "1" { providers = append(providers, proofofplay.DevelopmentAttestationVerifier{}) }
+
+	var playTokens proofofplay.AccessTokenSource = proofofplay.StaticAccessToken(os.Getenv("BBWEALTH_PLAY_INTEGRITY_ACCESS_TOKEN"))
+	if credentialsPath := strings.TrimSpace(os.Getenv("BBWEALTH_GOOGLE_SERVICE_ACCOUNT_FILE")); credentialsPath != "" {
+		playTokens, err = proofofplay.NewGoogleServiceAccountTokenSourceFile(credentialsPath, nil)
+		if err != nil {
+			logger.Error("configure Google Play Integrity service account", "error", err)
+			os.Exit(1)
+		}
+	}
+	providers := []proofofplay.AttestationProviderVerifier{
+		proofofplay.AppleAppAttestVerifier{Config: attConfig, Validator: appleValidator},
+		proofofplay.GooglePlayIntegrityVerifier{Config: attConfig, Decoder: proofofplay.PlayIntegrityHTTPDecoder{Tokens: playTokens}},
+	}
+	if os.Getenv("BBWEALTH_DEV_CONTROLS") == "1" {
+		providers = append(providers, proofofplay.DevelopmentAttestationVerifier{})
+	}
 	attestation, err := proofofplay.NewAttestationService(time.Now, proofofplay.NewAttestationFileStore(envOr("BBWEALTH_ATTESTATION_STATE", "data/attestation.json")), attConfig, providers...)
-	if err != nil { logger.Error("open Proof-of-Play attestation state", "error", err); os.Exit(1) }
+	if err != nil {
+		logger.Error("open Proof-of-Play attestation state", "error", err)
+		os.Exit(1)
+	}
 
 	gameRegistry := game.NewRegistry(time.Now, envOr("BBWEALTH_GAME_DIR", "data/players"), envOr("BBWEALTH_GAME_STATE", "data/game-state.json"))
 	identityService, err := identity.NewService(time.Now, identity.NewFileStore(envOr("BBWEALTH_IDENTITY_STATE", "data/identity.json")), identity.NewPLCResolver(nil), identity.Config{
 		RPID: envOr("BBWEALTH_RP_ID", "localhost"), RPName: "Battle Bunny Wealth", AllowedOrigins: origins, SessionTTL: 30 * 24 * time.Hour,
 	})
-	if err != nil { logger.Error("open identity state", "error", err); os.Exit(1) }
+	if err != nil {
+		logger.Error("open identity state", "error", err)
+		os.Exit(1)
+	}
 	spa, err := webapp.Handler()
-	if err != nil { logger.Error("create spa handler", "error", err); os.Exit(1) }
+	if err != nil {
+		logger.Error("create spa handler", "error", err)
+		os.Exit(1)
+	}
 
 	base := httpserver.New(logger, protocol, authority, gameRegistry, identityService, spa)
 	handler := httpserver.WithAttestation(base, protocol, authority, attestation, identityService)
@@ -57,11 +94,34 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	go func() { <-ctx.Done(); shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second); defer cancel(); if err := server.Shutdown(shutdownCtx); err != nil { logger.Error("shutdown server", "error", err) } }()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			logger.Error("shutdown server", "error", err)
+		}
+	}()
 
 	logger.Info("battle bunny wealth listening", "addr", addr)
-	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) { logger.Error("server stopped", "error", err); os.Exit(1) }
+	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("server stopped", "error", err)
+		os.Exit(1)
+	}
 }
 
-func envOr(key, fallback string) string { if value := os.Getenv(key); value != "" { return value }; return fallback }
-func splitCSV(value string) []string { var out []string; for _, item := range strings.Split(value, ",") { if item = strings.TrimSpace(item); item != "" { out = append(out, item) } }; return out }
+func envOr(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+func splitCSV(value string) []string {
+	var out []string
+	for _, item := range strings.Split(value, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
+}

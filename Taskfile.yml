@@ -33,6 +33,23 @@ tasks:
     cmds:
       - go run ./cmd/pop-sim -scenario attack-sweep -seed 42 -format csv
 
+  sim:bootstrap:
+    desc: Model a 100-real-phone farm against the four-phone bootstrap
+    cmds:
+      - go run ./cmd/pop-bootstrap-sim -phones 100
+
+  testnet:keygen:
+    desc: Generate a local permissioned-testnet node key
+    cmds:
+      - mkdir -p ./data/testnet/node-a
+      - go run ./cmd/pop-node -keygen ./data/testnet/node-a/node.key
+
+  testnet:smoke:
+    desc: Finalize 20 blocks across five independent local testnet engines
+    cmds:
+      - go run ./cmd/pop-cluster -blocks 20
+      - go run ./cmd/pop-bootstrap-sim -phones 100 -gate
+
   build:web:
     desc: Build the Solid SPA into web/dist
     dir: web
@@ -40,11 +57,14 @@ tasks:
       - npm run build
 
   build:
-    desc: Build the production frontend and Go binary
+    desc: Build the production frontend and Go binaries
     deps: [build:web]
     cmds:
       - go build -o ./battlebunnywealth ./cmd/battlebunnywealth
       - go build -o ./pop-sim ./cmd/pop-sim
+      - go build -o ./pop-bootstrap-sim ./cmd/pop-bootstrap-sim
+      - go build -o ./pop-node ./cmd/pop-node
+      - go build -o ./pop-cluster ./cmd/pop-cluster
 
   test:
     desc: Run frontend typechecking and Go tests
@@ -59,6 +79,11 @@ tasks:
       - cd web && npm run typecheck
       - go test ./...
       - go run ./cmd/pop-sim -scenario smoke -seed 1 -format json > /tmp/pop-sim-smoke.json
+      - go run ./cmd/pop-bootstrap-sim -phones 100 -gate
+      - go run ./cmd/pop-cluster -blocks 20
       - go vet ./...
       - go build ./cmd/battlebunnywealth
       - go build ./cmd/pop-sim
+      - go build ./cmd/pop-bootstrap-sim
+      - go build ./cmd/pop-node
+      - go build ./cmd/pop-cluster
