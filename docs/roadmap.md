@@ -64,29 +64,39 @@
 - Separation of player profile, account identity, authentication identity, portable/social identity, and device identity.
 - Multi-device enrollment and revocation data model.
 - Browser-generated P-256 device key persisted locally in IndexedDB; server stores the public key only.
-- All v0.5 browser device keys remain `unattested` and confer zero Proof-of-Play authority.
+- All v0.5 browser device keys remain `unattested`.
 - `/account` UI for registration, sign-in, additional passkeys, ATProto linking, device enrollment, and revocation.
 
 The v0.5 WebAuthn verifier is deliberately narrow alpha code and requires security/interoperability review before public production authentication.
 
-## v0.6 — Proof-of-Play missions and authority
+## v0.6 — Proof-of-Play missions and authority — implemented on `dev`
 
-- Optional NPC-presented network missions.
-- Deterministic mission qualification.
-- Authority accrual rules.
-- Bounded authority weighting.
-- Slow inactivity decay.
-- No mission requirement for ordinary idle progression or Warren Wars access.
-- Active honest participation increases committee-selection probability rather than guaranteeing selection.
+- Optional NPC-presented network missions with Recon Patrol, Secure the Supply Line, and Verify Intel templates.
+- Mission assignment bound to account, active enrolled device key, current epoch, current chain head, protocol operation, and cryptographically random challenge.
+- Five-minute mission expiry plus a hard four-issued-missions-per-UTC-day ceiling.
+- Device-key signature verification and replay/binding/expiry defenses.
+- Persistent authority/service history independent of game economy and account storage.
+- +25 authority per valid mission, capped at 1,000 for the current research policy.
+- Prototype committee eligibility threshold at 100 authority.
+- 72-hour inactivity grace followed by slow 0.5%-per-day authority decay.
+- Fourteen-day newcomer ramp from 10% to 100% effective committee weight.
+- Deterministic weighted committee sampling without replacement for research/testing.
+- `/proof-of-play` mission UI with local device signing, authority status, committee weight, daily limits, and completion history.
+- No mission requirement for idle progression, campaign progression, or Warren Wars access.
+- Unattested devices can exercise the v0.6 prototype, but `productionEligible` and production committee selection remain hard-disabled until v0.7.
+
+The v0.6 constants and selection algorithm are explicit research parameters for attack simulation, not frozen consensus rules.
 
 ## v0.7 — Attested participation prototype
 
 - Native iOS App Attest spike.
 - Native Android Play Integrity spike.
 - Hardware-backed device signing.
-- Challenge issuance/replay defense.
-- Provider adapter abstraction.
+- Upgrade mission/device qualification from `unattested` prototype participation to verified provider-backed evidence.
+- Challenge/replay defense across attestation assertions.
+- Provider adapter abstraction and outage policy.
 - Multi-device diminishing-weight experiment.
+- Define the first conditions under which `productionEligible` could become true on a non-economic test network.
 
 ## v0.8 — Proof-of-Play simulator
 
