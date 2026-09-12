@@ -12,6 +12,7 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 - [Account and portable identity](account-identity.md) — v0.5 passkeys, account-owned game state, ATProto profile links, device enrollment/revocation, and authentication boundaries.
 - [Warren Wars](warren-wars.md) — deterministic arena rules, bombs, pickups, ranked fairness, replay format, inputs, bots, and v0.2 validation.
 - [Proof of Play](proof-of-play.md) — authority, optional network missions, committee-selection research, and consensus phases.
+- [Proof-of-Play missions and authority](proof-of-play-authority.md) — v0.6 executable mission signing, rate limits, bounded authority, decay, newcomer weighting, and committee-lottery prototype.
 - [Identity and attestation](identity-and-attestation.md) — player/account/device separation, ATProto, passkeys, Apple App Attest, and Google Play Integrity.
 - [Economy](economy.md) — Bunny Bucks vs. CARROT, fixed-supply intent, founder/admin allocation, and ranked fairness boundaries.
 - [Security](security.md) — Sybil resistance, mission/device farms, authority grinding, CARROT risks, anti-cheat, and threat model.
@@ -32,3 +33,4 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 7. CARROT is planned as a fixed-supply network coin with a 20% founder/admin supply allocation; the remaining supply schedule and allocation still require formal specification.
 8. Proof of Play remains a research protocol until its Sybil resistance and finality survive simulation and adversarial testing.
 9. Account login, portable/social identity, device identity, and Proof-of-Play authority are separate security concepts; none automatically grants another.
+10. v0.6 authority from unattested browser device keys is prototype-only; production committee eligibility remains disabled until attestation exists.
