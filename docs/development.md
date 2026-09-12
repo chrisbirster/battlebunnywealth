@@ -103,6 +103,44 @@ BBWEALTH_DEV_CONTROLS=1
 
 This enables the `development` attestation provider. That provider is permanently non-hardware-backed and non-eligible for the attested committee gate.
 
+## v0.8 simulator workflow
+
+The simulator is a separate Go binary so attack-model experiments do not mutate live game, identity, authority, or attestation state.
+
+Run one deterministic scenario:
+
+```bash
+go run ./cmd/pop-sim -scenario phone-farm -seed 42 -format json
+```
+
+Run the attacker population sweep:
+
+```bash
+go run ./cmd/pop-sim -scenario attack-sweep -seed 42 -format csv
+```
+
+Run every built-in research scenario:
+
+```bash
+go run ./cmd/pop-sim -scenario all -seed 42 -format csv
+```
+
+Longer explicit research run:
+
+```bash
+go run ./cmd/pop-sim \
+  -scenario phone-farm \
+  -seed 20260912 \
+  -days 90 \
+  -trials 10000 \
+  -format json \
+  -out /tmp/phone-farm.json
+```
+
+Use the same seed to reproduce a result. Change seeds to sample Monte Carlo uncertainty. Simulator cost inputs are scenario assumptions rather than current market-price claims.
+
+See `docs/proof-of-play-simulator.md` for scenario semantics and output interpretation.
+
 ## Production parity
 
 ```bash
@@ -112,11 +150,13 @@ npm run typecheck
 npm run build
 cd ..
 go test ./...
+go run ./cmd/pop-sim -scenario smoke -seed 1 -format json > /tmp/pop-sim-smoke.json
 go vet ./...
 go build ./cmd/battlebunnywealth
+go build ./cmd/pop-sim
 ```
 
-The Go binary embeds whatever is currently in `web/dist`.
+The Go server binary embeds whatever is currently in `web/dist`. `pop-sim` is a separate research executable and is not linked into the game server runtime.
 
 ## API rules
 
@@ -128,6 +168,7 @@ The Go binary embeds whatever is currently in `web/dist`.
 - Browser device keys remain unattested unless a native provider flow verifies the corresponding enrolled device record.
 - Never treat an attested device as proof of one unique person.
 - Keep platform attestation behind provider interfaces; Apple/Google are trust inputs, not protocol identity.
+- Keep simulator assumptions explicit and deterministic; do not promote one run into a security guarantee.
 - Keep transport DTOs JSON-friendly but protocol domain types transport-agnostic when practical.
 - Never expose private device keys.
 - Never publish raw account IDs/device public keys from committee prototypes.
