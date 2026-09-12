@@ -1,5 +1,5 @@
 export type ATProtoBinding = { did: string; handle?: string; pds?: string; status: string; boundAt: string };
-export type Device = { id: string; name: string; platform: string; publicKeySpki: string; status: string; attestationStatus: string; enrolledAt: string; revokedAt?: string };
+export type Device = { id: string; name: string; platform: string; publicKeySpki: string; status: string; attestationStatus: string; attestationProvider?: string; hardwareBacked: boolean; productionEligible: boolean; enrolledAt: string; attestedAt?: string; revokedAt?: string };
 export type Account = { id: string; displayName: string; createdAt: string; passkeyCount: number; atproto?: ATProtoBinding; devices: Device[] };
 
 type RegistrationBegin = { ceremony: string; publicKey: any };
