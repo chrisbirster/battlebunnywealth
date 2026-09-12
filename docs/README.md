@@ -14,6 +14,7 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 - [Proof of Play](proof-of-play.md) — authority, optional network missions, committee-selection research, and consensus phases.
 - [Proof-of-Play missions and authority](proof-of-play-authority.md) — v0.6 executable mission signing, rate limits, bounded authority, decay, newcomer weighting, and committee-lottery prototype.
 - [Attested participation](attested-participation.md) — v0.7 provider adapters, key-bound attestation challenges, mobile spikes, testnet gate, and diminishing multi-device weight.
+- [Proof-of-Play simulator](proof-of-play-simulator.md) — v0.8 deterministic attacker/population simulation, capture probabilities, liveness, churn, provider outages, and illustrative attack-cost reports.
 - [Identity and attestation](identity-and-attestation.md) — player/account/device separation, ATProto, passkeys, Apple App Attest, and Google Play Integrity.
 - [Economy](economy.md) — Bunny Bucks vs. CARROT, fixed-supply intent, founder/admin allocation, and ranked fairness boundaries.
 - [Security](security.md) — Sybil resistance, mission/device farms, authority grinding, CARROT risks, anti-cheat, and threat model.
@@ -35,3 +36,4 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 8. Proof of Play remains a research protocol until its Sybil resistance and finality survive simulation and adversarial testing.
 9. Account login, portable/social identity, device identity, platform attestation, and Proof-of-Play authority are separate security concepts; none automatically proves unique humanity.
 10. v0.7 attestation may satisfy a permissioned non-economic testnet eligibility gate; it does not activate distributed production consensus or CARROT issuance.
+11. v0.8 simulator outputs are attack-model evidence under explicit assumptions, not proof that Proof of Play is secure.
