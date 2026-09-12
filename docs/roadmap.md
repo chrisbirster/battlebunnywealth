@@ -105,18 +105,30 @@ The v0.6 constants and selection algorithm are explicit research parameters for 
 
 The native iOS/Android files are integration spikes rather than CI-built mobile applications. App Attest still needs a concrete reviewed server validator, and production Google integration needs renewable OAuth credentials rather than the development static-token source.
 
-## v0.8 — Proof-of-Play simulator
+## v0.8 — Proof-of-Play simulator — implemented on `dev`
 
-- honest-user model
-- inactive-player model
-- highly active participant model
-- mission-completion distributions
-- bot/mission-farm model
-- real-device farm model
-- multi-device household model
-- authority/decay simulations
-- committee-capture probability analysis
-- attestation-provider outage model
+- Separate deterministic `pop-sim` Go research executable.
+- Simulator policy defaults sourced from the executable v0.7 authority/protocol configuration.
+- Honest, inactive, highly active, and multi-device population models.
+- Unattested emulator/bot-farm model that cannot enter the attested committee set.
+- Real-device phone-farm model with configurable hardware/account/operating cost assumptions.
+- Delayed attacker onboarding to exercise the newcomer ramp.
+- Compromised-validator/collusion scenarios.
+- Device churn plus re-attestation/replacement delay.
+- Correlated Apple/Google provider-outage scenarios under an explicit fail-closed research policy.
+- Authority accrual, cap, inactivity decay, and 100% / 25% / 10% / 2% device-award modeling.
+- Weighted committee sampling without replacement.
+- Blocking-threshold and 2/3-finality capture probabilities with Wilson 95% intervals.
+- Per-day capture approximation, capture streaks, and mean adversarial seats.
+- Quorum-online/liveness measurements.
+- Committee-weight Gini and HHI concentration metrics.
+- Median adversarial time-to-eligibility.
+- Deterministic JSON and CSV reports.
+- Real-phone attacker population sweep.
+- CI tests for determinism, unattested-bot exclusion, real-phone risk, outage/churn behavior, output formats, and policy-constant drift.
+- CI smoke execution plus dedicated simulator binary build.
+
+Simulator results are evidence under explicit assumptions, not proof that Proof of Play is secure. v0.9 should only promote committee/authority parameters when the exact v0.8 scenario and seed evidence is recorded.
 
 ## v0.9 — Permissioned testnet
 

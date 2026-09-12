@@ -18,6 +18,21 @@ tasks:
     cmds:
       - go run ./cmd/battlebunnywealth
 
+  sim:
+    desc: Run the baseline Proof-of-Play simulation
+    cmds:
+      - go run ./cmd/pop-sim -scenario baseline -seed 42 -format json
+
+  sim:all:
+    desc: Run all built-in Proof-of-Play scenarios as CSV
+    cmds:
+      - go run ./cmd/pop-sim -scenario all -seed 42 -format csv
+
+  sim:sweep:
+    desc: Sweep real-phone attacker population sizes
+    cmds:
+      - go run ./cmd/pop-sim -scenario attack-sweep -seed 42 -format csv
+
   build:web:
     desc: Build the Solid SPA into web/dist
     dir: web
@@ -29,6 +44,7 @@ tasks:
     deps: [build:web]
     cmds:
       - go build -o ./battlebunnywealth ./cmd/battlebunnywealth
+      - go build -o ./pop-sim ./cmd/pop-sim
 
   test:
     desc: Run frontend typechecking and Go tests
@@ -42,5 +58,7 @@ tasks:
     cmds:
       - cd web && npm run typecheck
       - go test ./...
+      - go run ./cmd/pop-sim -scenario smoke -seed 1 -format json > /tmp/pop-sim-smoke.json
       - go vet ./...
       - go build ./cmd/battlebunnywealth
+      - go build ./cmd/pop-sim

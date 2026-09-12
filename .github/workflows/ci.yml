@@ -35,7 +35,11 @@ jobs:
         run: npm run build
       - name: Test Go
         run: go test ./...
+      - name: Smoke Proof-of-Play simulator
+        run: go run ./cmd/pop-sim -scenario smoke -seed 1 -format json > /tmp/pop-sim-smoke.json
       - name: Vet Go
         run: go vet ./...
       - name: Build server
         run: go build ./cmd/battlebunnywealth
+      - name: Build simulator
+        run: go build ./cmd/pop-sim
