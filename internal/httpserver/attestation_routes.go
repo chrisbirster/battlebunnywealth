@@ -24,7 +24,8 @@ func WithAttestation(base http.Handler, protocol proofOfPlay, authority *proofof
 		account,err:=currentAccount(auth,r);if err!=nil{writeIdentityError(w,err);return};var body struct{DeviceID string `json:"deviceId"`};if err:=decodeJSON(w,r,&body);err!=nil{writeJSON(w,http.StatusBadRequest,map[string]string{"error":err.Error()});return};device,err:=activeDevice(account,body.DeviceID);if err!=nil{writeIdentityError(w,err);return};ordinal:=activeDeviceOrdinal(account,device.ID);weight:=proofofplay.DeviceWeightPercent(ordinal);now:=time.Now().UTC();snapshot,err:=authority.IssueWeightedMission(account.ID,device.ID,device.PublicKeySPKI,device.AttestationStatus,protocol.Head().Hash,protocol.CurrentEpoch(now),weight);if err!=nil{writeProofError(w,err);return};writeJSON(w,http.StatusOK,snapshot)
 	})
 	mux.Handle("/",base)
-	return mux
+	// The outer mux owns the new v0.7 routes, so preserve the same origin and response-security guards as the base server.
+	return securityHeaders(originGuard(auth,mux))
 }
 
 func providerMatchesPlatform(provider,platform string)bool{switch provider{case proofofplay.ProviderAppleAppAttest:return platform=="ios";case proofofplay.ProviderGooglePlayIntegrity:return platform=="android";case proofofplay.ProviderDevelopment:return true;default:return false}}
