@@ -1,9 +1,11 @@
 package testnet
 
+import "net/http"
+
 // SyncFromWithStore performs the same independently verified peer catch-up as
 // SyncFrom and durably appends every newly imported finalized block. This keeps
 // a long-running node from losing peer-synced history on its next restart.
-func SyncFromWithStore(peerURL string, client HTTPClient, engine *Engine, store *Store) error {
+func SyncFromWithStore(peerURL string, client *http.Client, engine *Engine, store *Store) error {
 	before := engine.Height()
 	if err := SyncFrom(peerURL, client, engine); err != nil {
 		return err
@@ -17,6 +19,5 @@ func SyncFromWithStore(peerURL string, client HTTPClient, engine *Engine, store 
 			return err
 		}
 	}
-	// Imported finality supersedes any stale in-progress round snapshot.
 	return store.ClearRoundProgress()
 }
