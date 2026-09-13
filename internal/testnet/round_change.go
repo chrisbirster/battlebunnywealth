@@ -23,6 +23,7 @@ type RoundChange struct {
 	ValidatorID     string `json:"validatorId"`
 	LockedRound     uint32 `json:"lockedRound,omitempty"`
 	LockedValueHash string `json:"lockedValueHash,omitempty"`
+	LockProof       *Vote  `json:"lockProof,omitempty"`
 	Signature       string `json:"signature"`
 }
 
@@ -41,6 +42,7 @@ type ValidatorLock struct {
 	ValidatorID string `json:"validatorId"`
 	Round       uint32 `json:"round"`
 	ValueHash   string `json:"valueHash"`
+	Proof       Vote   `json:"proof"`
 }
 
 type RoundProgress struct {
@@ -50,14 +52,37 @@ type RoundProgress struct {
 	Certificates []RoundCertificate `json:"certificates,omitempty"`
 }
 
-func BuildRoundChange(networkID string, height uint64, fromRound uint32, validator Validator, privateKey any, lockedRound uint32, lockedValueHash string) (RoundChange, error) {
+// BuildRoundChange keeps an optional variadic proof so unlocked callers remain
+// source-compatible. A lock claim, however, requires exactly one signed vote
+// proving that this validator actually voted for the claimed consensus value.
+func BuildRoundChange(networkID string, height uint64, fromRound uint32, validator Validator, privateKey any, lockedRound uint32, lockedValueHash string, proof ...Vote) (RoundChange, error) {
 	if networkID == "" || height == 0 || validator.ID == "" {
 		return RoundChange{}, ErrInvalidRoundChange
 	}
-	if lockedValueHash == "" {
-		lockedRound = 0
+	rc := RoundChange{
+		NetworkID:       networkID,
+		Height:          height,
+		FromRound:       fromRound,
+		ToRound:         fromRound + 1,
+		ValidatorID:     validator.ID,
+		LockedRound:     lockedRound,
+		LockedValueHash: lockedValueHash,
 	}
-	rc := RoundChange{NetworkID: networkID, Height: height, FromRound: fromRound, ToRound: fromRound + 1, ValidatorID: validator.ID, LockedRound: lockedRound, LockedValueHash: lockedValueHash}
+	if lockedValueHash == "" {
+		rc.LockedRound = 0
+		if len(proof) != 0 {
+			return RoundChange{}, ErrInvalidRoundChange
+		}
+	} else {
+		if len(proof) != 1 {
+			return RoundChange{}, ErrInvalidRoundChange
+		}
+		p := proof[0]
+		if err := verifyLockProof(rc, validator, p); err != nil {
+			return RoundChange{}, err
+		}
+		rc.LockProof = &p
+	}
 	sig, err := Sign(validator.Algorithm, privateKey, roundChangeSigningMessage(rc))
 	if err != nil {
 		return RoundChange{}, err
@@ -67,7 +92,27 @@ func BuildRoundChange(networkID string, height uint64, fromRound uint32, validat
 }
 
 func roundChangeSigningMessage(rc RoundChange) string {
-	return fmt.Sprintf("bbw-round-change/v1\nnetwork=%s\nheight=%d\nfromRound=%d\ntoRound=%d\nvalidator=%s\nlockedRound=%d\nlockedValue=%s", rc.NetworkID, rc.Height, rc.FromRound, rc.ToRound, rc.ValidatorID, rc.LockedRound, rc.LockedValueHash)
+	proofBlock := ""
+	if rc.LockProof != nil {
+		proofBlock = rc.LockProof.BlockHash
+	}
+	return fmt.Sprintf("bbw-round-change/v2\nnetwork=%s\nheight=%d\nfromRound=%d\ntoRound=%d\nvalidator=%s\nlockedRound=%d\nlockedValue=%s\nlockProofBlock=%s", rc.NetworkID, rc.Height, rc.FromRound, rc.ToRound, rc.ValidatorID, rc.LockedRound, rc.LockedValueHash, proofBlock)
+}
+
+func verifyLockProof(change RoundChange, validator Validator, proof Vote) error {
+	if change.LockedValueHash == "" {
+		if change.LockProof != nil || change.LockedRound != 0 {
+			return ErrInvalidRoundChange
+		}
+		return nil
+	}
+	if proof.NetworkID != change.NetworkID || proof.Height != change.Height || proof.Round != change.LockedRound || proof.ValidatorID != change.ValidatorID || proof.Decision != "commit" || proof.ValueHash == "" || proof.ValueHash != change.LockedValueHash || proof.BlockHash == "" {
+		return ErrInvalidRoundChange
+	}
+	if !VerifySignature(validator.Algorithm, validator.PublicKey, voteSigningMessage(proof), proof.Signature) {
+		return ErrInvalidSignature
+	}
+	return nil
 }
 
 func BlockValueHash(b Block) string { return blockValueHash(b) }
@@ -86,24 +131,57 @@ func blockValueHash(b Block) string {
 	return hashText(string(raw))
 }
 
-func chooseCertificateLock(changes []RoundChange) (uint32, string, error) {
-	var highest uint32
-	value := ""
+// quorumIntersectionThreshold is the minimum number of matching lock proofs
+// guaranteed to occur in any quorum-sized round-change certificate if the same
+// value previously obtained a finality quorum: |Q1 ∩ Q2| >= 2Q-N.
+func quorumIntersectionThreshold(committeeSize, quorum int) int {
+	threshold := 2*quorum - committeeSize
+	if threshold < 1 {
+		threshold = 1
+	}
+	return threshold
+}
+
+// chooseCertificateLock ignores isolated lock claims. A value is carried into
+// the next round only when matching signed lock proofs reach the quorum-
+// intersection threshold. This prevents one malicious validator from inventing
+// a lone high-round lock that stalls the whole committee while preserving a
+// value that could already have finalized on another honest peer.
+func chooseCertificateLock(changes []RoundChange, minimumProofs int) (uint32, string, error) {
+	if minimumProofs < 1 {
+		minimumProofs = 1
+	}
+	type key struct {
+		round uint32
+		value string
+	}
+	counts := map[key]int{}
 	for _, change := range changes {
 		if change.LockedValueHash == "" {
 			continue
 		}
-		if change.LockedRound > highest {
-			highest = change.LockedRound
-			value = change.LockedValueHash
+		counts[key{round: change.LockedRound, value: change.LockedValueHash}]++
+	}
+
+	var highest uint32
+	value := ""
+	found := false
+	for candidate, count := range counts {
+		if count < minimumProofs {
 			continue
 		}
-		if change.LockedRound == highest && value != "" && change.LockedValueHash != value {
+		if !found || candidate.round > highest {
+			highest = candidate.round
+			value = candidate.value
+			found = true
+			continue
+		}
+		if candidate.round == highest && candidate.value != value {
 			return 0, "", ErrConflictingLocks
 		}
-		if change.LockedRound == highest && value == "" {
-			value = change.LockedValueHash
-		}
+	}
+	if !found {
+		return 0, "", nil
 	}
 	return highest, value, nil
 }
