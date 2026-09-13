@@ -12,33 +12,28 @@ The mature committee target remains 64, but v0.9 does not require 64 phones or 6
 
 ## Validator activation
 
-A newly attested device is a validator candidate, not an active validator. The v0.9 default research policy is:
-
-- minimum authority: 100;
-- maturation: 30 days;
-- activation window: 7 days;
-- maximum new activations per window: 1.
-
-This is a bootstrap safety mechanism, not a unique-human proof. A sufficiently patient real-device farm can still accumulate candidates. The rate limit exists to make sudden capture impossible and slow long-horizon capture enough to observe and study it before permissionless enrollment is attempted.
-
-The game remains immediately usable by new players. Validator maturation only limits consensus influence.
+A newly attested device is a validator candidate, not an active validator. The v0.9 default research policy is minimum authority 100, maturation 30 days, a 7-day activation window, and at most one new activation per window. This rate limit makes sudden phone-farm capture impossible during bootstrap while leaving long-horizon capture as an explicit research risk.
 
 ## Device eligibility
 
-The protocol normalizes provider-specific attestation into one device-eligibility view.
+Android candidates require the configured package/signing certificate, `PLAY_RECOGNIZED`, `LICENSED`, and strong hardware-backed Play Integrity for `productionEligible`.
 
-Android consensus candidates require a verified Google Play Integrity result, the configured package/signing certificate, `PLAY_RECOGNIZED`, `LICENSED`, and the strong hardware-backed integrity tier for `productionEligible`.
+Apple candidates require verified App Attest evidence tied to the configured Team ID and bundle ID, a valid certificate chain to the configured trust root, nonce/AAGUID/credential checks, and the P-256 public key certified at enrollment.
 
-Apple consensus candidates require verified App Attest evidence tied to the configured Team ID + bundle ID, a valid certificate chain to the configured App Attest trust root, the App Attest nonce, environment AAGUID, credential/key binding, and a P-256 attested public key. The Apple trust root is supplied by the operator so it can be rotated without recompiling the binary.
+After enrollment, the server persists that certified App Attest public key and issues one-time, purpose-bound assertion challenges. The iOS client hashes the canonical challenge payload and calls `generateAssertion`. The server verifies the assertion signature, App ID/RP-ID hash, exact challenge, and a strictly increasing assertion counter. Used challenges and steady/decreasing counters are rejected as replays.
 
-Neither provider proves that one device equals one independent human.
+Assertion endpoints are `POST /api/v1/proof-of-play/attestations/assertions/begin` and `POST /api/v1/proof-of-play/attestations/assertions/complete`.
+
+Neither platform signal proves that one device equals one independent human.
 
 ## Non-economic boundary
 
-v0.9 has no economically valuable CARROT, token rewards, staking, or purchases that affect consensus. The milestone exists to break consensus, persistence, networking, and activation assumptions before economic incentives are introduced.
+v0.9 has no economically valuable CARROT, token rewards, staking, or purchases that affect consensus.
 
 ## Security properties under test
 
 The testnet rejects wrong-network messages, invalid previous hashes, invalid state roots, unknown validators, invalid signatures, duplicate votes, equivocation, unknown permissioned peers, replayed peer envelopes, oversized bodies, and excessive concurrent requests from one source address. Stored chains are reverified on restart, and stale nodes only catch up by importing finalized blocks that independently pass certificate verification.
+
+The attestation layer also rejects reused enrollment/assertion challenges, App Attest signatures that do not verify with the enrollment-certified key, App-ID mismatches, and non-increasing assertion counters.
 
 These controls do not make the system production-secure. v0.9 remains a permissioned research network.
