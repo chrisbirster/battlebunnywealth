@@ -70,6 +70,25 @@ tasks:
     cmds:
       - go run ./cmd/pop-soak -blocks 1100 -gate
 
+  testnet:round-chaos:
+    desc: Run deterministic round-change, reordering, duplicate, partition, clock-skew, and restart chaos
+    cmds:
+      - go run ./cmd/pop-round-chaos -blocks 240 -seed 42 -gate
+
+  testnet:checkpoint-compare:
+    desc: Compare checkpoints from independent running operators; pass URL1 and URL2 variables
+    cmds:
+      - go run ./cmd/pop-checkpoint-compare -url "{{.URL1}}" -url "{{.URL2}}"
+    requires:
+      vars: [URL1, URL2]
+
+  testnet:evidence:
+    desc: Collect availability, latency, status, and checkpoint evidence from two operators
+    cmds:
+      - go run ./cmd/pop-network-evidence -url "{{.URL1}}" -url "{{.URL2}}" -gate
+    requires:
+      vars: [URL1, URL2]
+
   build:web:
     desc: Build the Solid SPA into web/dist
     dir: web
@@ -89,6 +108,9 @@ tasks:
       - go build -o ./carrot-wallet ./cmd/carrot-wallet
       - go build -o ./pop-public-smoke ./cmd/pop-public-smoke
       - go build -o ./pop-soak ./cmd/pop-soak
+      - go build -o ./pop-round-chaos ./cmd/pop-round-chaos
+      - go build -o ./pop-checkpoint-compare ./cmd/pop-checkpoint-compare
+      - go build -o ./pop-network-evidence ./cmd/pop-network-evidence
 
   test:
     desc: Run frontend typechecking and Go tests
@@ -108,6 +130,7 @@ tasks:
       - go run ./cmd/carrot-spec -check
       - go run ./cmd/pop-public-smoke -attackers 100 -gate
       - go run ./cmd/pop-soak -blocks 1100 -gate > /tmp/pop-soak.json
+      - go run ./cmd/pop-round-chaos -blocks 240 -seed 42 -gate > /tmp/pop-round-chaos.json
       - go vet ./...
       - go build ./cmd/battlebunnywealth
       - go build ./cmd/pop-sim
@@ -118,3 +141,6 @@ tasks:
       - go build ./cmd/carrot-wallet
       - go build ./cmd/pop-public-smoke
       - go build ./cmd/pop-soak
+      - go build ./cmd/pop-round-chaos
+      - go build ./cmd/pop-checkpoint-compare
+      - go build ./cmd/pop-network-evidence
