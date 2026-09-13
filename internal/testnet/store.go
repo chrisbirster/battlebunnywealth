@@ -128,6 +128,15 @@ func (s *Store) Restore(engine *Engine) error {
 		return err
 	}
 	if ok {
+		nextHeight := engine.Height() + 1
+		if progress.Height < nextHeight {
+			// A crash after blocks.ndjson fsync but before round-state cleanup can
+			// leave a stale snapshot. Finalized history wins deterministically.
+			return s.ClearRoundProgress()
+		}
+		if progress.Height > nextHeight {
+			return fmt.Errorf("restore round state: future height %d, next height %d", progress.Height, nextHeight)
+		}
 		if err := engine.RestoreRoundProgress(progress); err != nil {
 			return fmt.Errorf("restore round state: %w", err)
 		}
