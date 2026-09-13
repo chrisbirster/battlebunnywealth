@@ -35,6 +35,7 @@ func OpenStore(dir string, genesis Genesis) (*Store, error) {
 	}
 	return s, nil
 }
+
 func (s *Store) Append(block FinalizedBlock) error {
 	path := filepath.Join(s.Dir, "blocks.ndjson")
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
@@ -51,6 +52,7 @@ func (s *Store) Append(block FinalizedBlock) error {
 	}
 	return f.Sync()
 }
+
 func (s *Store) Load() ([]FinalizedBlock, error) {
 	path := filepath.Join(s.Dir, "blocks.ndjson")
 	f, err := os.Open(path)
@@ -76,6 +78,41 @@ func (s *Store) Load() ([]FinalizedBlock, error) {
 	}
 	return out, scan.Err()
 }
+
+func (s *Store) SaveRoundProgress(progress RoundProgress) error {
+	if progress.Height == 0 {
+		return errors.New("round progress height required")
+	}
+	raw, err := json.MarshalIndent(progress, "", "  ")
+	if err != nil {
+		return err
+	}
+	return atomicWrite(filepath.Join(s.Dir, "round-state.json"), append(raw, '\n'), 0o600)
+}
+
+func (s *Store) LoadRoundProgress() (RoundProgress, bool, error) {
+	raw, err := os.ReadFile(filepath.Join(s.Dir, "round-state.json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return RoundProgress{}, false, nil
+	}
+	if err != nil {
+		return RoundProgress{}, false, err
+	}
+	var progress RoundProgress
+	if err := json.Unmarshal(raw, &progress); err != nil {
+		return RoundProgress{}, false, fmt.Errorf("decode round state: %w", err)
+	}
+	return progress, true, nil
+}
+
+func (s *Store) ClearRoundProgress() error {
+	err := os.Remove(filepath.Join(s.Dir, "round-state.json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
 func (s *Store) Restore(engine *Engine) error {
 	blocks, err := s.Load()
 	if err != nil {
@@ -86,8 +123,18 @@ func (s *Store) Restore(engine *Engine) error {
 			return fmt.Errorf("verify stored block %d: %w", block.Block.Height, err)
 		}
 	}
+	progress, ok, err := s.LoadRoundProgress()
+	if err != nil {
+		return err
+	}
+	if ok {
+		if err := engine.RestoreRoundProgress(progress); err != nil {
+			return fmt.Errorf("restore round state: %w", err)
+		}
+	}
 	return nil
 }
+
 func atomicWrite(path string, data []byte, mode os.FileMode) error {
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, mode); err != nil {
