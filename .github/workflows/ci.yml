@@ -43,7 +43,7 @@ jobs:
         run: go test ./internal/testnet -run 'Test(FourValidator|TwoOffline|InvalidSignature|HundredFake|DuplicateVote|ProposalRejects)'
       - name: Test testnet transport and recovery
         run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress)'
-      - name: Gate replicated TEST-CARROT state
+      - name: Gate replicated TEST-CARROT and transition state
         run: go test ./internal/publictestnet
       - name: Test Go
         run: go test ./...
@@ -57,6 +57,8 @@ jobs:
         run: go run ./cmd/carrot-spec -check
       - name: Gate adversarial public testnet
         run: go run ./cmd/pop-public-smoke -attackers 100 -gate
+      - name: Gate controlled transitions and long-running public testnet
+        run: go run ./cmd/pop-soak -blocks 1100 -gate > /tmp/pop-soak.json
       - name: Vet Go
         run: go vet ./...
       - name: Build server
@@ -75,3 +77,5 @@ jobs:
         run: go build ./cmd/carrot-wallet
       - name: Build public-testnet adversarial harness
         run: go build ./cmd/pop-public-smoke
+      - name: Build public-testnet soak harness
+        run: go build ./cmd/pop-soak

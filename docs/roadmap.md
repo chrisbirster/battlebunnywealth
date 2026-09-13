@@ -45,24 +45,39 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - restart/store replay and peer catch-up reproduce the same consensus state root
 - validator reward addresses are covered by the validator-signed admission payload
 - public peer diversity adds IPv4 `/24` and IPv6 `/48` prefix limits in addition to per-host/total limits
-- quorum-finalized validator-set transition commitments with minimum notice; automatic activation remains deferred
-- quorum-finalized protocol-upgrade commitments with minimum notice and recovery replay; executable hot-upgrade remains deferred
+- quorum-finalized validator-set and protocol-upgrade commitments with minimum notice and recovery replay
 - hashed public TEST-CARROT funding policy with no mint, automatic faucet, or treasury-spending path
 - external security-review handoff package and explicit known-limitations/release-blocker list
 - TEST-CARROT remains explicitly valueless; no production CARROT activation
 
-## v0.13 — Controlled transition activation + long-running public testnet
+## v0.13 — Controlled transition activation + long-running public testnet — implemented on `dev`
 
-- make finalized validator-set commitments activate deterministically at the committed height without breaking prior reward-settlement verification
-- implement explicit protocol-upgrade activation/restart procedure and rollback/recovery drills
-- persist validator-set history needed to verify committees and reward certificates across transitions
-- add long-running multi-node soak harness with crash/restart, delayed messages, partitions, and catch-up
-- add ASN/provider-aware peer diversity research beyond IP-prefix limits
-- add transaction queueing for multiple sequential nonces per sender with bounded replacement rules
-- add public node snapshots/checkpoints with independent verification
-- add incident-response/key-compromise runbooks
-- exercise the external security-review package against a frozen commit and record findings
-- keep TEST-CARROT non-economic until all v1.0 economic-readiness gates are met
+- finalized validator-set commitments activate deterministically at the committed height
+- historical validator sets remain available for committee, finality-certificate, and reward-settlement verification
+- removed validators lose current voting power without invalidating historical signatures
+- finalized protocol-upgrade commitments activate at the exact committed height when the binary explicitly supports the target version; unsupported versions fail closed
+- protocol-v3 genesis can exercise the reviewed v4 compatibility activation path without arbitrary chain-loaded code
+- transition schedules/history are committed into replicated state and survive restart/catch-up replay
+- deterministic 1,100-block multi-node soak crosses validator/protocol activation, alternate quorum subsets, partitions/catch-up, and repeated full replay/restart while checking state-root convergence and fixed-supply conservation
+- public discovery can apply trusted server-side ASN/provider diversity caps in addition to host and IP-prefix limits
+- mempool supports up to 16 queued sequential/future nonces per sender, contiguous proposal selection, and bounded same-nonce fee replacement
+- public consensus snapshots and compact checkpoints are exposed; checkpoints require independent genesis/finality replay to verify
+- incident-response and key-compromise runbook added
+- v0.13 internal security-review rehearsal records unresolved risks without claiming an external audit
+- TEST-CARROT remains non-economic
+
+## v0.14 — Round-change protocol + distributed public-testnet evidence
+
+- replace the single-round research loop with an explicit multi-round timeout/round-change state machine
+- prove safety when honest validators observe proposals/votes in different orders and across prolonged partial partitions
+- persist/recover in-progress round/lock state safely across crashes
+- add proposer censorship and equivocation evidence handling without introducing unsafe automatic slashing
+- run geographically/network-provider-distributed public nodes and record latency, peer diversity, catch-up, and availability evidence
+- feed trusted ASN/provider metadata from a reproducible operator data source and measure false positives/evasion
+- add checkpoint comparison tooling across independent operators and alert on finalized-hash/state-root disagreement
+- add longer randomized chaos/soak scenarios with message loss, duplication, reordering, clock skew, and rolling restarts
+- remediate findings from the v0.13 pre-audit rehearsal and prepare a frozen commit for independent external security review
+- keep TEST-CARROT valueless; economic activation remains blocked
 
 ## v1.0 candidate — Game + network readiness
 
@@ -77,9 +92,9 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 ### Network
 
 - attested enrollment and public adversarial evidence
-- robust committee/finality behavior through validator-set changes and upgrade activation
+- robust committee/finality behavior through validator-set changes, protocol upgrades, and round changes
 - deterministic fixed-supply CARROT accounting
 - reviewed wallet/treasury/governance path
-- external security/legal/tax/privacy/app-store review appropriate for an economically valuable launch
+- independent external security review plus legal/tax/privacy/app-store review appropriate for an economically valuable launch
 
 Economic activation happens only after those gates are satisfied, not merely because the code can represent CARROT.
