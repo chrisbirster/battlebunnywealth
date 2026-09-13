@@ -103,43 +103,41 @@ The v0.6 constants and selection algorithm are explicit research parameters for 
 - Development provider available only under dev controls and permanently excluded from attested eligibility.
 - Account UI displays provider, attestation status, hardware-backed signal, testnet eligibility, and device weight.
 
-The native iOS/Android files are integration spikes rather than CI-built mobile applications. App Attest still needs a concrete reviewed server validator, and production Google integration needs renewable OAuth credentials rather than the development static-token source.
+The native iOS/Android files are integration spikes rather than CI-built mobile applications.
 
 ## v0.8 — Proof-of-Play simulator — implemented on `dev`
 
 - Separate deterministic `pop-sim` Go research executable.
-- Simulator policy defaults sourced from the executable v0.7 authority/protocol configuration.
+- Simulator policy defaults sourced from executable authority/protocol configuration.
 - Honest, inactive, highly active, and multi-device population models.
 - Unattested emulator/bot-farm model that cannot enter the attested committee set.
 - Real-device phone-farm model with configurable hardware/account/operating cost assumptions.
-- Delayed attacker onboarding to exercise the newcomer ramp.
+- Delayed attacker onboarding to exercise newcomer ramp.
 - Compromised-validator/collusion scenarios.
 - Device churn plus re-attestation/replacement delay.
-- Correlated Apple/Google provider-outage scenarios under an explicit fail-closed research policy.
-- Authority accrual, cap, inactivity decay, and 100% / 25% / 10% / 2% device-award modeling.
+- Correlated Apple/Google provider-outage scenarios.
 - Weighted committee sampling without replacement.
-- Blocking-threshold and 2/3-finality capture probabilities with Wilson 95% intervals.
-- Per-day capture approximation, capture streaks, and mean adversarial seats.
-- Quorum-online/liveness measurements.
-- Committee-weight Gini and HHI concentration metrics.
-- Median adversarial time-to-eligibility.
-- Deterministic JSON and CSV reports.
-- Real-phone attacker population sweep.
-- CI tests for determinism, unattested-bot exclusion, real-phone risk, outage/churn behavior, output formats, and policy-constant drift.
+- Capture probabilities, Wilson intervals, liveness, concentration, and cost metrics.
 - CI smoke execution plus dedicated simulator binary build.
 
-Simulator results are evidence under explicit assumptions, not proof that Proof of Play is secure. v0.9 should only promote committee/authority parameters when the exact v0.8 scenario and seed evidence is recorded.
+Simulator results are evidence under explicit assumptions, not proof that Proof of Play is secure.
 
-## v0.9 — Permissioned testnet
+## v0.9 — Permissioned testnet — implemented on `dev`
 
-- peer networking
-- deterministic state machine
-- persistent chain/state
-- authority state replication
-- committee selection
-- votes/finality
-- metrics and operator docs
-- no economically valuable CARROT yet
+- Four-device genesis bootstrap with 3-of-4 finality.
+- Validator candidate maturation and rate-limited activation before committee eligibility.
+- Full-node identity separated from participant/device consensus identity; extra servers create no voting power.
+- Deterministic committee/proposer selection with one vote per selected member.
+- Signed proposals, votes, finality certificates, persistent chain/state, restart verification, and peer catch-up.
+- Permissioned signed peer relay with replay, network-ID, request-size, and concurrency defenses.
+- Standalone `pop-node` plus deterministic five-engine local cluster smoke harness.
+- Four-phone bootstrap simulator and CI gate against a 100-real-phone attacker cohort.
+- Google Play Integrity recognized-app, licensing, signing-certificate, and hardware-integrity policy with renewable service-account OAuth credentials.
+- Concrete Apple App Attest enrollment verification with operator-supplied trust root.
+- Apple App Attest post-enrollment assertions using the enrollment-certified public key, one-time purpose-bound challenges, App-ID checks, and monotonic counter replay defense.
+- No economically valuable CARROT.
+
+v0.9 remains a permissioned research network; attestation does not prove unique humanity and the bootstrap activation limits intentionally precede permissionless enrollment.
 
 ## v0.10 — CARROT protocol specification
 
