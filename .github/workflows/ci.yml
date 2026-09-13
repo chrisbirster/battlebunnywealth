@@ -43,6 +43,8 @@ jobs:
         run: go run ./cmd/pop-cluster -blocks 20
       - name: Check CARROT protocol invariants
         run: go run ./cmd/carrot-spec -check
+      - name: Gate adversarial public testnet
+        run: go run ./cmd/pop-public-smoke -attackers 100 -gate
       - name: Vet Go
         run: go vet ./...
       - name: Build server
@@ -57,3 +59,7 @@ jobs:
         run: go build ./cmd/pop-cluster
       - name: Build CARROT spec tool
         run: go build ./cmd/carrot-spec
+      - name: Build TEST-CARROT wallet tool
+        run: go build ./cmd/carrot-wallet
+      - name: Build public-testnet adversarial harness
+        run: go build ./cmd/pop-public-smoke

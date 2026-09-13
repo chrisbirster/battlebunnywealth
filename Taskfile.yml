@@ -60,6 +60,11 @@ tasks:
       - go run ./cmd/pop-cluster -blocks 20
       - go run ./cmd/pop-bootstrap-sim -phones 100 -gate
 
+  testnet:public-smoke:
+    desc: Exercise public discovery, signed TEST-CARROT, and 100-attacker containment gates
+    cmds:
+      - go run ./cmd/pop-public-smoke -attackers 100 -gate
+
   build:web:
     desc: Build the Solid SPA into web/dist
     dir: web
@@ -76,6 +81,8 @@ tasks:
       - go build -o ./pop-node ./cmd/pop-node
       - go build -o ./pop-cluster ./cmd/pop-cluster
       - go build -o ./carrot-spec ./cmd/carrot-spec
+      - go build -o ./carrot-wallet ./cmd/carrot-wallet
+      - go build -o ./pop-public-smoke ./cmd/pop-public-smoke
 
   test:
     desc: Run frontend typechecking and Go tests
@@ -93,6 +100,7 @@ tasks:
       - go run ./cmd/pop-bootstrap-sim -phones 100 -gate
       - go run ./cmd/pop-cluster -blocks 20
       - go run ./cmd/carrot-spec -check
+      - go run ./cmd/pop-public-smoke -attackers 100 -gate
       - go vet ./...
       - go build ./cmd/battlebunnywealth
       - go build ./cmd/pop-sim
@@ -100,3 +108,5 @@ tasks:
       - go build ./cmd/pop-node
       - go build ./cmd/pop-cluster
       - go build ./cmd/carrot-spec
+      - go build ./cmd/carrot-wallet
+      - go build ./cmd/pop-public-smoke
