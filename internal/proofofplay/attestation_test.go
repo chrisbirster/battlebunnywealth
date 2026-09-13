@@ -87,12 +87,13 @@ func TestAttestationChallengeExpires(t *testing.T) {
 }
 
 func TestAppleAdapterRequiresHardwareBackedResult(t *testing.T) {
-	verifier := AppleAppAttestVerifier{Config: AttestationConfig{AppleBundleID: "com.example.bbw", AppleTeamID: "TEAM", AppleEnvironment: "development"}, Validator: fakeAppleValidator{result: AppleValidationResult{KeyID: "key", HardwareBacked: true}}}
+	providerKey := testDeviceSPKI(t)
+	verifier := AppleAppAttestVerifier{Config: AttestationConfig{AppleBundleID: "com.example.bbw", AppleTeamID: "TEAM", AppleEnvironment: "development"}, Validator: fakeAppleValidator{result: AppleValidationResult{KeyID: "key", ProviderPublicKeySPKI: providerKey, HardwareBacked: true}}}
 	result, err := verifier.VerifyEnrollment(context.Background(), AttestationChallenge{Nonce: "nonce", RequestHash: "hash"}, AttestationEvidence{KeyID: "key", Payload: "object"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.ProductionEligible || !result.HardwareBacked {
+	if !result.ProductionEligible || !result.HardwareBacked || result.ProviderPublicKeySPKI != providerKey {
 		t.Fatalf("result=%+v", result)
 	}
 }
