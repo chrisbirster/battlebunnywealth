@@ -39,10 +39,10 @@ jobs:
         run: go test ./internal/testnet -run '^$'
       - name: Test testnet genesis and protocol commitment
         run: go test ./internal/testnet -run '^TestGenesisCommitsCARROTPolicy$'
-      - name: Test testnet voting and fault rejection
-        run: go test ./internal/testnet -run 'Test(FourValidator|TwoOffline|InvalidSignature|HundredFake|DuplicateVote|ProposalRejects)'
+      - name: Test testnet voting, round change, and fault rejection
+        run: go test ./internal/testnet -run 'Test(FourValidator|TwoOffline|InvalidSignature|HundredFake|DuplicateVote|ProposalRejects|RoundChange|ValidatorCannotOmit|RoundProgress|ProposerEquivocation|ProposalAndVoteEquivocation)'
       - name: Test testnet transport and recovery
-        run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress)'
+        run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress|SyncFromWithStore|StoreIgnoresStale)'
       - name: Gate replicated TEST-CARROT and transition state
         run: go test ./internal/publictestnet
       - name: Test Go
@@ -59,6 +59,8 @@ jobs:
         run: go run ./cmd/pop-public-smoke -attackers 100 -gate
       - name: Gate controlled transitions and long-running public testnet
         run: go run ./cmd/pop-soak -blocks 1100 -gate > /tmp/pop-soak.json
+      - name: Gate round changes, message disorder, partitions, and restart replay
+        run: go run ./cmd/pop-round-chaos -blocks 240 -seed 42 -gate > /tmp/pop-round-chaos.json
       - name: Vet Go
         run: go vet ./...
       - name: Build server
@@ -79,3 +81,9 @@ jobs:
         run: go build ./cmd/pop-public-smoke
       - name: Build public-testnet soak harness
         run: go build ./cmd/pop-soak
+      - name: Build round-change chaos harness
+        run: go build ./cmd/pop-round-chaos
+      - name: Build checkpoint comparison tool
+        run: go build ./cmd/pop-checkpoint-compare
+      - name: Build distributed evidence collector
+        run: go build ./cmd/pop-network-evidence
