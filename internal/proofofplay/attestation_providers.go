@@ -19,10 +19,11 @@ type AppleValidationRequest struct {
 	Environment       string
 }
 type AppleValidationResult struct {
-	KeyID            string
-	ReceiptDigest    string
-	AssertionCounter uint64
-	HardwareBacked   bool
+	KeyID                 string
+	ReceiptDigest         string
+	ProviderPublicKeySPKI string
+	AssertionCounter      uint64
+	HardwareBacked        bool
 }
 type AppleAttestationValidator interface {
 	ValidateAppAttest(context.Context, AppleValidationRequest) (AppleValidationResult, error)
@@ -52,6 +53,13 @@ func (v AppleAppAttestVerifier) VerifyEnrollment(ctx context.Context, challenge 
 	if result.KeyID != "" && result.KeyID != evidence.KeyID {
 		return AttestationResult{}, errors.New("Apple App Attest key mismatch")
 	}
+	providerPublicKeySPKI := result.ProviderPublicKeySPKI
+	if result.HardwareBacked && providerPublicKeySPKI == "" {
+		providerPublicKeySPKI, err = appAttestPublicKeySPKI(evidence.Payload)
+		if err != nil {
+			return AttestationResult{}, err
+		}
+	}
 	digest := result.ReceiptDigest
 	if digest == "" {
 		sum := sha256.Sum256([]byte(evidence.Payload))
@@ -59,8 +67,9 @@ func (v AppleAppAttestVerifier) VerifyEnrollment(ctx context.Context, challenge 
 	}
 	return AttestationResult{
 		Provider: ProviderAppleAppAttest, ProviderKeyID: evidence.KeyID,
-		EvidenceDigest: digest, IntegrityLabels: []string{"APP_ATTEST_VERIFIED"},
-		HardwareBacked: result.HardwareBacked, ProductionEligible: result.HardwareBacked,
+		ProviderPublicKeySPKI: providerPublicKeySPKI,
+		EvidenceDigest:        digest, IntegrityLabels: []string{"APP_ATTEST_VERIFIED"},
+		HardwareBacked: result.HardwareBacked, ProductionEligible: result.HardwareBacked && providerPublicKeySPKI != "",
 		AssertionCounter: result.AssertionCounter,
 	}, nil
 }
