@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/chrisbirster/battlebunnywealth/internal/carrot"
 )
 
-const ProtocolVersion = 1
+const ProtocolVersion = 2
 
 var (
 	ErrWrongNetwork        = errors.New("wrong network")
@@ -68,12 +70,13 @@ type Validator struct {
 }
 
 type Genesis struct {
-	Version    int            `json:"version"`
-	NetworkID  string         `json:"networkId"`
-	CreatedAt  time.Time      `json:"createdAt"`
-	Config     ProtocolConfig `json:"config"`
-	Validators []Validator    `json:"validators"`
-	Hash       string         `json:"hash"`
+	Version          int            `json:"version"`
+	NetworkID        string         `json:"networkId"`
+	CreatedAt        time.Time      `json:"createdAt"`
+	Config           ProtocolConfig `json:"config"`
+	Validators       []Validator    `json:"validators"`
+	CarrotPolicyHash string         `json:"carrotPolicyHash"`
+	Hash             string         `json:"hash"`
 }
 
 func NewGenesis(networkID string, createdAt time.Time, cfg ProtocolConfig, validators []Validator) (Genesis, error) {
@@ -104,7 +107,11 @@ func NewGenesis(networkID string, createdAt time.Time, cfg ProtocolConfig, valid
 			v.Authority = 1
 		}
 	}
-	g := Genesis{Version: ProtocolVersion, NetworkID: networkID, CreatedAt: createdAt.UTC(), Config: cfg, Validators: normalized}
+	policy := carrot.DefaultPolicy()
+	if err := policy.Validate(); err != nil {
+		return Genesis{}, fmt.Errorf("invalid CARROT policy: %w", err)
+	}
+	g := Genesis{Version: ProtocolVersion, NetworkID: networkID, CreatedAt: createdAt.UTC(), Config: cfg, Validators: normalized, CarrotPolicyHash: policy.Hash()}
 	g.Hash = hashGenesis(g)
 	return g, nil
 }
@@ -115,6 +122,13 @@ func (g Genesis) Validate() error {
 	}
 	if g.NetworkID == "" || g.Hash == "" {
 		return errors.New("incomplete genesis")
+	}
+	policy := carrot.DefaultPolicy()
+	if err := policy.Validate(); err != nil {
+		return fmt.Errorf("invalid local CARROT policy: %w", err)
+	}
+	if g.CarrotPolicyHash == "" || g.CarrotPolicyHash != policy.Hash() {
+		return errors.New("CARROT policy hash mismatch")
 	}
 	if hashGenesis(g) != g.Hash {
 		return errors.New("genesis hash mismatch")

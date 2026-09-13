@@ -41,6 +41,8 @@ jobs:
         run: go run ./cmd/pop-bootstrap-sim -phones 100 -gate
       - name: Smoke permissioned testnet cluster
         run: go run ./cmd/pop-cluster -blocks 20
+      - name: Check CARROT protocol invariants
+        run: go run ./cmd/carrot-spec -check
       - name: Vet Go
         run: go vet ./...
       - name: Build server
@@ -53,3 +55,5 @@ jobs:
         run: go build ./cmd/pop-node
       - name: Build testnet cluster harness
         run: go build ./cmd/pop-cluster
+      - name: Build CARROT spec tool
+        run: go build ./cmd/carrot-spec
