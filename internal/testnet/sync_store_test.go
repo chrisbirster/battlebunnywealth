@@ -1,6 +1,7 @@
 package testnet
 
 import (
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,9 +50,6 @@ func TestStoreIgnoresStaleRoundStateAfterFinality(t *testing.T) {
 	engine, _ := NewEngine(f.genesis)
 	block, proposal := f.proposal(t, engine, 0)
 	if err := engine.HandleProposal(proposal); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(t.TempDir(), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
