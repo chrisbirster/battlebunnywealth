@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/chrisbirster/battlebunnywealth/internal/testnet"
 )
 
 func TestCheckpointVerifiesByIndependentReplay(t *testing.T) {
