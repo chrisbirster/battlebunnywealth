@@ -1,17 +1,18 @@
 package testnet
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 )
 
 var (
-	ErrStaleRound       = errors.New("stale consensus round")
-	ErrFutureRound      = errors.New("future consensus round has no certificate")
+	ErrStaleRound         = errors.New("stale consensus round")
+	ErrFutureRound        = errors.New("future consensus round has no certificate")
 	ErrInvalidRoundChange = errors.New("invalid round-change message")
-	ErrConflictingLocks = errors.New("conflicting validator locks")
-	ErrLockedValue      = errors.New("validator is locked on another value")
+	ErrConflictingLocks   = errors.New("conflicting validator locks")
+	ErrLockedValue        = errors.New("validator is locked on another value")
 )
 
 // RoundChange is a validator-signed request to move one height from FromRound
@@ -111,13 +112,9 @@ func blockValueHash(b Block) string {
 		StateRoot:     b.StateRoot,
 		Operations:    b.Operations,
 	}
-	raw, _ := jsonMarshal(value)
+	raw, _ := json.Marshal(value)
 	return hashText(string(raw))
 }
-
-// jsonMarshal is kept as a tiny indirection so blockValueHash stays alongside
-// round-change logic without duplicating the consensus block hash definition.
-func jsonMarshal(v any) ([]byte, error) { return json.Marshal(v) }
 
 func chooseCertificateLock(changes []RoundChange) (uint32, string, error) {
 	var highest uint32
