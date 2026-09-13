@@ -63,11 +63,6 @@ func RunSoak(blocks int) (SoakReport, error) {
 	if err != nil {
 		return SoakReport{}, err
 	}
-	for i := range genesis.Validators {
-		// NewGenesis canonicalizes the genesis validators. Keep the generated
-		// keys keyed by ID, so no positional coupling is required below.
-		genesis.Validators[i].Active = true
-	}
 
 	const nodeCount = 5
 	engines := make([]*testnet.Engine, nodeCount)
@@ -236,11 +231,11 @@ func RunSoak(blocks int) (SoakReport, error) {
 	if report.FinalProtocolVersion != testnet.ProtocolVersion+1 {
 		return report, fmt.Errorf("protocol upgrade did not activate: version=%d", report.FinalProtocolVersion)
 	}
-	if containsValidator(engines[0].ValidatorsAtHeight(validatorActivation), genesis.Validators[3].ID) {
-		return report, errorsNew("removed genesis validator remained active")
+	if hasValidatorID(engines[0].ValidatorsAtHeight(validatorActivation), genesis.Validators[3].ID) {
+		return report, fmt.Errorf("removed genesis validator remained active")
 	}
-	if !containsValidator(engines[0].ValidatorsAtHeight(validatorActivation), allValidators[4].ID) {
-		return report, errorsNew("replacement validator did not activate")
+	if !hasValidatorID(engines[0].ValidatorsAtHeight(validatorActivation), allValidators[4].ID) {
+		return report, fmt.Errorf("replacement validator did not activate")
 	}
 	for i, state := range states {
 		if err := state.ValidateConservation(); err != nil {
@@ -250,5 +245,11 @@ func RunSoak(blocks int) (SoakReport, error) {
 	return report, nil
 }
 
-// Kept tiny to avoid importing errors solely for two fixed soak-gate messages.
-func errorsNew(message string) error { return fmt.Errorf("%s", message) }
+func hasValidatorID(validators []testnet.Validator, id string) bool {
+	for _, validator := range validators {
+		if validator.ID == id {
+			return true
+		}
+	}
+	return false
+}
