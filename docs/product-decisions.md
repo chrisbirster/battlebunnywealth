@@ -10,148 +10,71 @@ This page is the compact source of truth for decisions already made in Battle Bu
 
 ## Player and NPC roles
 
-### Decided
-
-- Every player creates and names their **own Battle Bunny**.
+- Every player creates and names their own Battle Bunny.
 - Player customization is a major identity/progression system.
-- Named characters such as First Sergeant Hard-as-Nails, Da Champ, Private Stuffy, Corporal Boomboom, Captain Cashmere, and Doc Flopsy are **NPCs**.
-- NPCs provide story, lore, tutorials, jokes, rivalries, and missions.
+- First Sergeant Hard-as-Nails, Da Champ, Private Stuffy, Corporal Boomboom, Captain Cashmere, Doc Flopsy, and other named characters are NPCs for story/lore/tutorials/missions.
 - NPC identities do not replace the player's avatar and do not grant ranked combat statistics.
-
-Principle:
 
 > NPCs belong to the world. Your bunny belongs to you.
 
 ## The three core systems
 
-### 1. Seasonal idle economy
+### Seasonal idle economy
 
-- Players create and upgrade bunny businesses.
-- Businesses generate seasonal game money: **Bunny Bucks**.
-- Players try to maximize business income over a season.
-- Season wealth can be turned in/spent for persistent collection, cosmetic, profile, story, trophy, and warren rewards.
-- Bunny Bucks are not CARROT and do not have a fixed supply.
+Players create and upgrade businesses that generate seasonal **Bunny Bucks**. Season wealth can fund collection, cosmetic, profile, story, trophy, and Warren rewards. Bunny Bucks are not CARROT and have no fixed global supply.
 
-### 2. Proof of Play network game
+### Proof of Play network game
 
-- Optional missions are the main game-facing interface to useful network participation.
-- Missions are not required for ordinary idle progression or Warren Wars access.
-- Qualified missions increase **Proof-of-Play authority**.
-- More active, honest participation gives a player a higher chance of being selected for network verification than an inactive participant.
-- Higher authority is a probability/eligibility advantage, not guaranteed permanent validator status.
-- Authority should grow slowly, be bounded, and decay gradually with inactivity.
-- Multiple legitimate devices are allowed, but additional devices should have diminishing weight.
+Optional missions increase bounded Proof-of-Play authority. Authority improves validator-selection probability but does not guarantee permanent status. Multiple legitimate devices are allowed with diminishing contribution. Attestation and participation history are security signals, not proof of one-human-one-device.
 
-### 3. Warren Wars skill game
+### Warren Wars
 
-- Warren Wars is an original grid-bomb arena inspired by classic maze bomb games.
-- Every ranked match starts competitively equal.
-- Ranked outcomes are determined by movement, timing, prediction, trapping, map control, and adaptation.
-- Persistent wealth, CARROT, purchases, account age, NPC/story progression, and Proof-of-Play authority cannot buy ranked combat power.
-- Gameplay-affecting powerups are obtained inside the match under the same rules for all players.
-- Persistent rewards can change appearance and status, not ranked statistics.
-
-Principle:
+Warren Wars is an original equal-start grid-bomb skill game. CARROT, Bunny Bucks, purchases, account age, season rank, NPC/story progress, and Proof-of-Play authority cannot buy ranked combat power.
 
 > You can buy style. You can earn status. You cannot buy skill.
 
 ## Identity and attestation
 
-### Decided direction
-
-- Player profile, account identity, authentication identity, device identity, and Proof-of-Play authority are separate concepts.
-- ATProto is a candidate for portable account/social identity and DIDs.
-- ATProto/DIDs are **not** proof that an account represents one unique person.
-- Passkeys are the preferred account-authentication direction.
-- Apple App Attest is the primary iOS attestation candidate.
-- Google Play Integrity plus hardware-backed signing is the primary Android candidate.
-- IMEI/permanent hardware identifiers are not the protocol identity model.
-- Attestation is one costly-to-fake signal, not proof of unique humanity.
+Player profile, account identity, authentication identity, portable/social identity, device identity, and Proof-of-Play authority remain separate. Passkeys are preferred for account authentication. Apple App Attest and Google Play Integrity/hardware-backed keys are device-integrity inputs. Neither proves unique humanity.
 
 ## Proof of Play
 
-### Core thesis
+Proof of Play researches whether long-lived, attested, useful participation can provide meaningful Sybil resistance and rotating validator selection without Proof of Work or stake ownership being the primary eligibility mechanism.
 
-Instead of securing eligibility primarily by burning computation or owning stake, Proof of Play researches whether long-lived, attested, useful participation by ordinary users/devices can provide meaningful Sybil resistance and validator selection.
+Important non-claims remain: button presses do not secure the chain; one phone/DID does not prove one human; device attestation does not stop a real-device farm; and the mechanism is not production-proven until it survives simulation and adversarial public testing.
 
-Conceptually:
+## CARROT — decided in v0.10
 
-```text
-participant identity
-+ attested device key
-+ unpredictable challenges
-+ qualified missions
-+ participation history
-+ bounded authority
-+ random committee selection
-= Proof-of-Play verification eligibility
-```
+- symbol: **CARROT**
+- fixed maximum: **21,000,000**
+- divisibility: **8 decimal places**
+- founder/admin allocation: **20% / 4,200,000**
+- Proof-of-Play issuance reserve: **60% / 12,600,000**
+- ecosystem reserve: **10% / 2,100,000**
+- community treasury: **5% / 1,050,000**
+- security/public-goods reserve: **5% / 1,050,000**
+- issuance uses 32 approximately four-year eras; each era receives half of the remaining participation reserve and the final era drains the exact remainder
+- founder vesting uses a one-year cliff and four-year total linear vest from genesis
+- missions build authority; they do not directly pay CARROT
+- fees are supply-neutral and distributed to finality signers; v0.10 testnet minimum fee is zero
+- founder custody target: 2-of-3; protocol treasuries: 3-of-5; seven-day key-rotation delay
+- treasury spending is disabled in v0.10
+- the testnet genesis commits the executable CARROT policy hash
+- CARROT cannot buy ranked Warren Wars power
+- Bunny Bucks do not convert one-for-one into CARROT
 
-### Important non-claims
+Still open before economic activation: public wallet/transaction design, concrete treasury key identities, governance mechanics, nonzero production fee parameters if any, legal/tax/app-store treatment, and whether/when economic activation is appropriate.
 
-- Button presses alone do not secure the chain.
-- One phone does not prove one human.
-- One DID does not prove one human.
-- App Attest/Play Integrity do not eliminate real-device farms.
-- Proof of Play is not yet a production-proven consensus mechanism.
-- Security assumptions must be tested through simulation, permissioned testnets, and adversarial public testnets before valuable economic activation.
-
-## CARROT
-
-### Decided
-
-- The planned network coin is named **CARROT**.
-- CARROT will have a **fixed maximum supply**, conceptually following Bitcoin's scarcity principle rather than unlimited issuance.
-- A declining/halving-like issuance model is a candidate and should be formally specified before activation.
-- Proof-of-Play network participation is the primary candidate distribution mechanism for the network-reward portion of supply.
-- **20% of total fixed CARROT supply is reserved for the founder/admin allocation.**
-- This is currently intended as a supply allocation, not a permanent 20% tax on every transaction or reward.
-- CARROT cannot buy ranked Warren Wars combat power.
-- Bunny Bucks do not convert directly one-for-one into CARROT.
-
-### Still open
-
-- total maximum CARROT supply
-- divisibility
-- exact issuance/halving schedule
-- exact percentage of the remaining 80% assigned to Proof-of-Play rewards, ecosystem/game rewards, community treasury, and liquidity/network bootstrapping
-- founder/admin vesting or lock schedule
-- fee model
-- governance model
-- genesis distribution mechanics
-- economic activation date
-
-These must be explicit and deterministic before an economically valuable public network launches.
+See [CARROT protocol](carrot-protocol.md).
 
 ## Seasons
 
-### Decided
-
-- Idle-business competition is seasonal.
-- Business optimization and seasonal income are a distinct competition from Warren Wars and Proof of Play.
-- Seasonal resets create a healthy boundary for large idle-game numbers.
-- Season history, trophies, cosmetics, and collection/progression can persist.
-
-### Still open
-
-- season length
-- exact reset rules
-- exact turn-in conversion curves
-- leaderboard/ranking rules
-- how much story content advances per season
+Idle-business competition is seasonal. Business optimization/season income is distinct from Warren Wars and Proof of Play. Season history, trophies, cosmetics, and collection/progression can persist while seasonal economy values reset.
 
 ## Legal/product constraints
 
 Before implementing real-money/token entry fees, pooled prizes, token sales, cash-equivalent tournament rewards, or similar mechanics, obtain dedicated legal/tax/app-store/product review.
 
-The architecture should not assume that every technically possible CARROT mechanic is appropriate to ship.
-
 ## Development/release process
 
-- Feature work happens on `feature/*` branches.
-- Feature PRs merge into `dev`.
-- Releases are prepared from `dev` into `main`.
-- Version tags are created from released `main` commits.
-- `main` is release-only.
-
-See [releases.md](releases.md) for the detailed release process.
+Feature work happens on `feature/*`, merges into `dev`, and releases are prepared from `dev` into release-only `main` with version tags from released commits.

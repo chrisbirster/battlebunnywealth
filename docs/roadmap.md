@@ -1,176 +1,77 @@
 # Roadmap
 
-## v0.1 — Foundation
+## v0.1 — Foundation — implemented on `dev`
 
-- Go binary embeds Vite/Solid SPA.
-- SolidJS 2 + Solid Router + StyleX shell.
-- Game landing page, Warren Command prototype, NPC/lore page.
-- Proof-of-Play package: blocks, chain validation, participants, challenges, proofs, config, status API.
-- Architecture/security/economy documentation.
-- feature -> dev -> main/tag CI discipline.
+- Go binary embeds the Vite/Solid SPA.
+- Proof-of-Play protocol scaffold, architecture/security/economy docs, and feature -> dev -> main/tag discipline.
 
-## v0.2 — Playable Warren Wars vertical slice — implemented on `dev`
+## v0.2 — Warren Wars vertical slice — implemented on `dev`
 
-- Deterministic grid simulation independent of rendering.
-- One original arena map.
-- Movement, collision, bomb placement/fuse/blast.
-- Destructible blocks and standardized pickups.
-- Player-created bunny representation in the arena.
-- Equal-start ranked rules: no account/season/CARROT/authority combat advantages.
-- Local bots for repeatable testing.
-- Match seed/replay foundation for debugging and fairness checks.
-- Keyboard, touch, and standard-gamepad input.
-- 1,000 seeded deterministic headless-match CI gate.
+- Deterministic grid simulation, original arena, bombs/blasts/crates/pickups, equal-start ranked rules, bots, replay, keyboard/touch/gamepad, and 1,000 seeded CI matches.
 
 ## v0.3 — Player profile + seasonal idle economy — implemented on `dev`
 
-- Persistent player-created Battle Bunny profile.
-- Bunny name, callsign, fur, ears, uniform, and cosmetic locker.
-- Single-player alpha state persisted by the Go server with schema-versioned atomic storage.
-- First three businesses and automatic offline earnings with an eight-hour cap.
-- Seasonal Bunny Bucks economy.
-- Business upgrades and first synergies.
-- Persistent NPC orientation sequence across the named story cast.
-- Preliminary local season standings API.
-- Season Zero manual turn-in for cosmetic/service-record rewards.
-- Server-authoritative validation for profile/economy mutations.
-- No persistent ranked combat power from idle wealth.
+- Persistent player-created bunny profile, three businesses, offline earnings, Bunny Bucks, upgrades/synergies, NPC orientation, season standings, and cosmetic-only turn-in.
 
 ## v0.4 — Seasons + story progression — implemented on `dev`
 
-- Server-timed `active -> turn-in -> archive -> next season` lifecycle.
-- Seven-day alpha season window and 24-hour turn-in window.
-- Schema-v2 migration for existing v0.3/schema-v1 saves.
-- Archived season history with final earnings, chapter/location, trophies, medals, turn-ins, and completion timestamps.
-- Chapter/location progression through Broken Burrow, Scrap Row, and Carrot District.
-- Persistent NPC story beats with First Sergeant Hard-as-Nails, Private Stuffy, Captain Cashmere, Corporal Boomboom, Da Champ, and Doc Flopsy.
-- Warren themes plus persistent season pennants/trophy decorations.
-- Service-record awards that survive seasonal economy resets.
-- Competitive season resets that return Bunny Bucks/businesses to the baseline while preserving identity/history/status.
-- Economy telemetry for lifetime earnings, upgrades, offline returns, and completed seasons.
-- Accelerated season transitions gated behind `BBWEALTH_DEV_CONTROLS=1` for local testing.
-- `/campaign` UI plus story/Warren APIs.
-- No story/season/Warren reward affects ranked Warren Wars combat power.
+- Timed season lifecycle, archives, NPC story beats, locations, Warren themes, persistent awards, season resets, telemetry, campaign UI, and no ranked-power rewards.
 
 ## v0.5 — Account and portable identity — implemented on `dev`
 
-- WebAuthn/passkey account creation and usernameless passkey login.
-- Short-lived passkey ceremonies with RP ID, origin, challenge, and signature validation.
-- ES256/P-256 passkey support with signature-counter rollback detection.
-- Random opaque sessions stored as hashes and delivered through HttpOnly SameSite=Strict cookies.
-- Per-account persistent Warren/game state with automatic claiming of the legacy single-player save.
-- Multi-account local standings across account-owned game states.
-- Optional `did:plc` ATProto profile resolution stored explicitly as `resolved-unverified`.
-- Separation of player profile, account identity, authentication identity, portable/social identity, and device identity.
-- Multi-device enrollment and revocation data model.
-- Browser-generated P-256 device key persisted locally in IndexedDB; server stores the public key only.
-- All v0.5 browser device keys remain `unattested`.
-- `/account` UI for registration, sign-in, additional passkeys, ATProto linking, device enrollment, and revocation.
-
-The v0.5 WebAuthn verifier is deliberately narrow alpha code and requires security/interoperability review before public production authentication.
+- Passkeys/WebAuthn, hashed sessions, per-account game state, optional `did:plc`, device enrollment/revocation, and browser P-256 device keys.
 
 ## v0.6 — Proof-of-Play missions and authority — implemented on `dev`
 
-- Optional NPC-presented network missions with Recon Patrol, Secure the Supply Line, and Verify Intel templates.
-- Mission assignment bound to account, active enrolled device key, current epoch, current chain head, protocol operation, and cryptographically random challenge.
-- Five-minute mission expiry plus a hard four-issued-missions-per-UTC-day ceiling.
-- Device-key signature verification and replay/binding/expiry defenses.
-- Persistent authority/service history independent of game economy and account storage.
-- +25 authority per valid mission, capped at 1,000 for the current research policy.
-- Prototype committee eligibility threshold at 100 authority.
-- 72-hour inactivity grace followed by slow 0.5%-per-day authority decay.
-- Fourteen-day newcomer ramp from 10% to 100% effective committee weight.
-- Deterministic weighted committee sampling without replacement for research/testing.
-- `/proof-of-play` mission UI with local device signing, authority status, committee weight, daily limits, and completion history.
-- No mission requirement for idle progression, campaign progression, or Warren Wars access.
-- Unattested devices can exercise the v0.6 prototype, but `productionEligible` and production committee selection remain hard-disabled until v0.7.
-
-The v0.6 constants and selection algorithm are explicit research parameters for attack simulation, not frozen consensus rules.
+- Signed optional missions, daily limits, bounded/decaying authority, newcomer weighting, deterministic weighted committee sampling, and Proof-of-Play UI.
 
 ## v0.7 — Attested participation prototype — implemented on `dev`
 
-- Provider-agnostic, persistent, single-use attestation challenge service.
-- Attestation challenge bound to the enrolled P-256 device key through a SHA-256 key commitment and canonical request binding.
-- Native iOS App Attest + Secure Enclave mission-key source spike.
-- Native Android Play Integrity + Android Keystore/StrongBox mission-key source spike.
-- Apple App Attest verifier boundary that fails closed until a concrete server validator is configured.
-- Google Play Integrity REST decoder and policy checks for request hash, package, app recognition, signing certificate, and device integrity.
-- Provider evidence projected into account device records without merging account identity and device identity.
-- First permissioned-testnet eligibility rule: authority threshold plus at least one active verified hardware-backed device signal.
-- Deterministic attested committee-selection path for future testnet work while distributed production consensus remains disabled.
-- Multi-device authority awards reduced to 100% / 25% / 10% / 2% for first / second / third / later active devices.
-- Concurrent replay defense: the attestation challenge is persisted as consumed before external provider verification.
-- Development provider available only under dev controls and permanently excluded from attested eligibility.
-- Account UI displays provider, attestation status, hardware-backed signal, testnet eligibility, and device weight.
-
-The native iOS/Android files are integration spikes rather than CI-built mobile applications.
+- Key-bound attestation challenges, native Apple/Android spikes, Play Integrity policy, App Attest integration boundary, attested eligibility, and diminishing multi-device authority.
 
 ## v0.8 — Proof-of-Play simulator — implemented on `dev`
 
-- Separate deterministic `pop-sim` Go research executable.
-- Simulator policy defaults sourced from executable authority/protocol configuration.
-- Honest, inactive, highly active, and multi-device population models.
-- Unattested emulator/bot-farm model that cannot enter the attested committee set.
-- Real-device phone-farm model with configurable hardware/account/operating cost assumptions.
-- Delayed attacker onboarding to exercise newcomer ramp.
-- Compromised-validator/collusion scenarios.
-- Device churn plus re-attestation/replacement delay.
-- Correlated Apple/Google provider-outage scenarios.
-- Weighted committee sampling without replacement.
-- Capture probabilities, Wilson intervals, liveness, concentration, and cost metrics.
-- CI smoke execution plus dedicated simulator binary build.
-
-Simulator results are evidence under explicit assumptions, not proof that Proof of Play is secure.
+- Deterministic attacker/population simulator, bot/phone farms, delayed attackers, outages/churn, collusion, capture/liveness/concentration/cost metrics, attack sweeps, and CI gates.
 
 ## v0.9 — Permissioned testnet — implemented on `dev`
 
-- Four-device genesis bootstrap with 3-of-4 finality.
-- Validator candidate maturation and rate-limited activation before committee eligibility.
-- Full-node identity separated from participant/device consensus identity; extra servers create no voting power.
-- Deterministic committee/proposer selection with one vote per selected member.
-- Signed proposals, votes, finality certificates, persistent chain/state, restart verification, and peer catch-up.
-- Permissioned signed peer relay with replay, network-ID, request-size, and concurrency defenses.
-- Standalone `pop-node` plus deterministic five-engine local cluster smoke harness.
-- Four-phone bootstrap simulator and CI gate against a 100-real-phone attacker cohort.
-- Google Play Integrity recognized-app, licensing, signing-certificate, and hardware-integrity policy with renewable service-account OAuth credentials.
-- Concrete Apple App Attest enrollment verification with operator-supplied trust root.
-- Apple App Attest post-enrollment assertions using the enrollment-certified public key, one-time purpose-bound challenges, App-ID checks, and monotonic counter replay defense.
+- Four-device genesis with 3-of-4 finality.
+- Validator maturation and rate-limited activation.
+- Full-node identity separated from participant/device voting identity.
+- Deterministic committee/proposer selection, signed proposals/votes/finality certificates, persistence/restart/catch-up, permissioned signed peer relay, and five-engine local smoke harness.
+- Four-phone vs. 100-real-phone bootstrap security gate.
+- Hardened Google Play Integrity and complete Apple App Attest enrollment/assertion verification.
 - No economically valuable CARROT.
 
-v0.9 remains a permissioned research network; attestation does not prove unique humanity and the bootstrap activation limits intentionally precede permissionless enrollment.
+## v0.10 — CARROT protocol specification — implemented on `dev`
 
-## v0.10 — CARROT protocol specification
-
-Before issuance becomes valuable, freeze and review:
-
-- fixed maximum CARROT supply
-- exact divisibility
-- declining issuance schedule
-- Proof-of-Play reward allocation
-- explicit 20% founder/admin allocation
-- remaining 80% allocation categories
-- founder vesting/lock policy
-- fee model
-- genesis state
-- treasury/key management
-- supply/circulation reporting
-
-This milestone is specification and testnet implementation, not necessarily public economic activation.
+- `carrot/1` executable fixed-supply policy.
+- 21,000,000 maximum CARROT with 8 decimal places.
+- Genesis-reserve accounting: 20% founder/admin, 60% Proof-of-Play issuance, 10% ecosystem, 5% community, 5% security/public goods.
+- One-year founder cliff and four-year total linear vest.
+- 32 declining four-year issuance eras that exhaust the participation reserve exactly using integer arithmetic.
+- Finality-signer equal reward model; ordinary missions do not directly pay CARROT.
+- Supply-neutral fee model; testnet minimum fee remains zero.
+- 2-of-3 founder custody target, 3-of-5 treasury target, seven-day key-rotation delay; treasury spending disabled in v0.10.
+- Deterministic supply/circulation reporting and conservation tests.
+- Permissioned-testnet protocol v2 genesis commits the frozen CARROT policy hash.
+- CI drift gate for policy hash, supply, allocation, vesting, issuance, fee, and conservation invariants.
+- Still no economically valuable CARROT or public token transaction system.
 
 ## v0.11 — Adversarial public testnet
 
 - open enrollment
-- valueless/test CARROT representation
+- valueless/test CARROT represented in consensus transactions
+- wallet/transaction signature format
 - public Sybil/device-farm attempts
 - authority grinding tests
 - committee bribery/collusion experiments
+- treasury/governance test implementation
 - bug bounty
 - protocol upgrade exercises
 - economics and legal review
 
 ## v1.0 candidate — Game + network readiness
-
-A v1.0 candidate should require evidence that both halves are independently good:
 
 ### Game
 
@@ -187,6 +88,7 @@ A v1.0 candidate should require evidence that both halves are independently good
 - robust committee/finality behavior
 - deterministic fixed-supply CARROT accounting
 - founder/admin allocation and lock policy publicly documented
+- wallet/treasury/governance path reviewed
 - security/legal review appropriate for an economically valuable launch
 
-Economic activation should happen only when those gates are satisfied, not merely because the code can mint a token.
+Economic activation should happen only when those gates are satisfied, not merely because the code can represent CARROT.

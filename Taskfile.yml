@@ -38,6 +38,16 @@ tasks:
     cmds:
       - go run ./cmd/pop-bootstrap-sim -phones 100
 
+  carrot:check:
+    desc: Validate frozen CARROT supply and issuance invariants
+    cmds:
+      - go run ./cmd/carrot-spec -check
+
+  carrot:report:
+    desc: Print the executable CARROT policy and height-1 supply report
+    cmds:
+      - go run ./cmd/carrot-spec -height 1
+
   testnet:keygen:
     desc: Generate a local permissioned-testnet node key
     cmds:
@@ -65,6 +75,7 @@ tasks:
       - go build -o ./pop-bootstrap-sim ./cmd/pop-bootstrap-sim
       - go build -o ./pop-node ./cmd/pop-node
       - go build -o ./pop-cluster ./cmd/pop-cluster
+      - go build -o ./carrot-spec ./cmd/carrot-spec
 
   test:
     desc: Run frontend typechecking and Go tests
@@ -81,9 +92,11 @@ tasks:
       - go run ./cmd/pop-sim -scenario smoke -seed 1 -format json > /tmp/pop-sim-smoke.json
       - go run ./cmd/pop-bootstrap-sim -phones 100 -gate
       - go run ./cmd/pop-cluster -blocks 20
+      - go run ./cmd/carrot-spec -check
       - go vet ./...
       - go build ./cmd/battlebunnywealth
       - go build ./cmd/pop-sim
       - go build ./cmd/pop-bootstrap-sim
       - go build ./cmd/pop-node
       - go build ./cmd/pop-cluster
+      - go build ./cmd/carrot-spec
