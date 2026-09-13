@@ -1,12 +1,29 @@
 package publictestnet
 
-import("context";"errors";"fmt";"path/filepath";"testing";"time";"github.com/chrisbirster/battlebunnywealth/internal/carrot";"github.com/chrisbirster/battlebunnywealth/internal/testnet")
-type allowVerifier struct{now time.Time}
+import (
+	"context"
+	"errors"
+	"fmt"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/chrisbirster/battlebunnywealth/internal/carrot"
+	"github.com/chrisbirster/battlebunnywealth/internal/testnet"
+)
+
+type allowVerifier struct{ now time.Time }
 func(v allowVerifier)VerifyCandidate(_ context.Context,a CandidateApplication)(Eligibility,error){return Eligibility{Attested:true,Authority:1000,Provider:a.Provider,JoinedAt:v.now},nil}
+
 func TestWalletRoundTripAndSignedTransfer(t *testing.T){w,err:=GenerateWallet();if err!=nil{t.Fatal(err)};path:=filepath.Join(t.TempDir(),"wallet.key");if err:=SaveWallet(path,w);err!=nil{t.Fatal(err)};loaded,err:=LoadWallet(path);if err!=nil{t.Fatal(err)};if loaded.Address()!=w.Address(){t.Fatal("wallet address changed")};to,_:=GenerateWallet();tx,err:=NewSignedTransaction("public",to.Address(),100,0,0,10,loaded);if err!=nil{t.Fatal(err)};if err:=ValidateTransaction(tx,"public",1,0);err!=nil{t.Fatal(err)};tx.AmountAtoms++;if !errors.Is(ValidateTransaction(tx,"public",1,0),ErrInvalidTransactionSig){t.Fatal("tamper accepted")}}
 func TestLedgerNonceReplayAndConservation(t *testing.T){from,_:=GenerateWallet();to,_:=GenerateWallet();ledger,_:=NewPublicLedger(carrot.DefaultPolicy());if _,err:=ledger.FundAtHeight(1,[]string{from.Address()});err!=nil{t.Fatal(err)};before:=ledger.Balance(from.Address());tx,_:=NewSignedTransaction("public",to.Address(),1000,0,0,20,from);if err:=ledger.Apply(tx,"public",1,nil);err!=nil{t.Fatal(err)};if ledger.Balance(from.Address())!=before-1000||ledger.Balance(to.Address())!=1000{t.Fatal("bad transfer balances")};if !errors.Is(ledger.Apply(tx,"public",1,nil),ErrInvalidNonce){t.Fatal("replay accepted")};if err:=ledger.ValidateConservation();err!=nil{t.Fatal(err)}}
 func TestMempoolBoundsAndDuplicate(t *testing.T){a,_:=GenerateWallet();b,_:=GenerateWallet();c,_:=GenerateWallet();m:=NewMempool("public",1);tx1,_:=NewSignedTransaction("public",b.Address(),1,0,0,20,a);if err:=m.Admit(tx1,1,0);err!=nil{t.Fatal(err)};if !errors.Is(m.Admit(tx1,1,0),ErrDuplicateTransaction){t.Fatal("duplicate accepted")};tx2,_:=NewSignedTransaction("public",c.Address(),1,0,0,20,b);if !errors.Is(m.Admit(tx2,1,0),ErrMempoolFull){t.Fatal("overflow accepted")}}
+
 func TestPublicPeerDirectoryLimitsSybilHost(t *testing.T){now:=time.Unix(1_800_000_000,0).UTC();d:=NewDirectory("public",64,4);accepted:=0;for i:=0;i<100;i++{k,_:=testnet.GenerateNodeKey();a,_:=BuildAnnouncement("public",fmt.Sprintf("http://198.51.100.8:%d",9000+i),fmt.Sprintf("%d",i),k,now,time.Hour);if d.Upsert(a,now)==nil{accepted++}};if accepted!=4||len(d.List(now))!=4{t.Fatalf("accepted=%d peers=%d",accepted,len(d.List(now)))}}
+func TestPublicPeerDirectoryLimitsSybilPrefix(t *testing.T){now:=time.Unix(1_800_000_000,0).UTC();d:=NewDirectory("public",64,4);accepted:=0;for i:=1;i<=40;i++{k,_:=testnet.GenerateNodeKey();a,_:=BuildAnnouncement("public",fmt.Sprintf("http://198.51.100.%d:9000",i),fmt.Sprintf("p%d",i),k,now,time.Hour);if d.Upsert(a,now)==nil{accepted++}};if accepted!=16{t.Fatalf("same-/24 accepted=%d want 16",accepted)}}
+
 func TestOpenCandidateSubmissionStillRateLimited(t *testing.T){now:=time.Unix(1_800_000_000,0).UTC();genesis:=[]testnet.Validator{{ID:"g1",PublicKey:"p1",Active:true},{ID:"g2",PublicKey:"p2",Active:true},{ID:"g3",PublicKey:"p3",Active:true},{ID:"g4",PublicKey:"p4",Active:true}};registry:=testnet.NewActivationRegistry(testnet.DefaultActivationPolicy(),genesis);svc:=&AdmissionService{NetworkID:"public",Registry:registry,Verifier:allowVerifier{now:now}};for i:=0;i<100;i++{pub,priv,_:=testnet.GenerateValidatorKey(testnet.AlgorithmEd25519);v:=testnet.Validator{ID:candidateID(pub),AccountID:fmt.Sprintf("a%d",i),DeviceID:fmt.Sprintf("d%d",i),Algorithm:testnet.AlgorithmEd25519,PublicKey:pub};app,_:=BuildCandidateApplication("public",v,"google-play-integrity",fmt.Sprintf("e%d",i),priv,now);if err:=svc.Submit(context.Background(),app,now);err!=nil{t.Fatal(err)}};if svc.Pending()!=100{t.Fatalf("pending=%d",svc.Pending())};if got:=registry.ActivateEligible(now.Add(29*24*time.Hour));len(got)!=0{t.Fatal("activated before maturity")};if got:=registry.ActivateEligible(now.Add(30*24*time.Hour));len(got)!=1{t.Fatalf("activated=%d",len(got))}}
+func TestValidatorRewardAddressIsSigned(t *testing.T){now:=time.Unix(1_800_000_000,0).UTC();registry:=testnet.NewActivationRegistry(testnet.DefaultActivationPolicy(),nil);svc:=&AdmissionService{NetworkID:"public",Registry:registry,Verifier:allowVerifier{now:now}};pub,priv,_:=testnet.GenerateValidatorKey(testnet.AlgorithmEd25519);reward,_:=GenerateWallet();replacement,_:=GenerateWallet();v:=testnet.Validator{ID:candidateID(pub),AccountID:"a",DeviceID:"d",Algorithm:testnet.AlgorithmEd25519,PublicKey:pub,RewardAddress:reward.Address()};app,err:=BuildCandidateApplication("public",v,"google-play-integrity","e",priv,now);if err!=nil{t.Fatal(err)};app.Validator.RewardAddress=replacement.Address();if !errors.Is(svc.Submit(context.Background(),app,now),ErrInvalidCandidate){t.Fatal("tampered reward address accepted")}}
+
 func TestProtocolUpgradeNoticeAndActivation(t *testing.T){m:=NewUpgradeManager("public",2);p:=NewUpgradePlan("public",2,3,2000,carrot.DefaultPolicy().Hash(),"v0.11.0");if err:=m.Stage(p,1);err!=nil{t.Fatal(err)};if m.VersionAt(1999)!=2||m.VersionAt(2000)!=3{t.Fatal("upgrade activation mismatch")};bad:=NewUpgradePlan("public",2,3,100,carrot.DefaultPolicy().Hash(),"v0.11.0");if NewUpgradeManager("public",2).Stage(bad,1)==nil{t.Fatal("short-notice upgrade accepted")}}
 func TestAdversarialSmoke(t *testing.T){r,err:=RunSmoke(100);if err!=nil{t.Fatal(err)};if r.PeersAccepted!=4||r.PeersRejected!=96||r.InvalidTransactions!=100||r.ValidTransactions!=1||r.ActivatedAfterMaturity!=1{t.Fatalf("unexpected report: %+v",r)}}
