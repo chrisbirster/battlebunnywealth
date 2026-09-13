@@ -21,7 +21,7 @@ func TestDirectoryAppliesTrustedASNAndProviderLimits(t *testing.T) {
 		if v4[0] == 203 {
 			return PeerNetworkMetadata{ASN: 64500, Provider: "cloud-a"}
 		}
-		return PeerNetworkMetadata{ASN: 64501, Provider: "cloud-b"}
+		return PeerNetworkMetadata{ASN: 64600 + uint32(v4[2]), Provider: "cloud-b"}
 	}), 3, 4)
 
 	for i := 1; i <= 3; i++ {
