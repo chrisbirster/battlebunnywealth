@@ -21,7 +21,15 @@ func advanceRoundOne(t *testing.T, f fixture, engine *Engine, locks map[string]V
 	for i := 0; i < 3; i++ {
 		validator := f.validators[i]
 		lock := locks[validator.ID]
-		change, err := BuildRoundChange(f.genesis.NetworkID, engine.Height()+1, 0, validator, f.keys[i], lock.Round, lock.ValueHash)
+		var (
+			change RoundChange
+			err    error
+		)
+		if lock.ValueHash != "" {
+			change, err = BuildRoundChange(f.genesis.NetworkID, engine.Height()+1, 0, validator, f.keys[i], lock.Round, lock.ValueHash, lock.Proof)
+		} else {
+			change, err = BuildRoundChange(f.genesis.NetworkID, engine.Height()+1, 0, validator, f.keys[i], 0, "")
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -82,25 +90,23 @@ func TestRoundChangeAdvancesAndFinalizesNextRound(t *testing.T) {
 	}
 }
 
-func TestRoundChangeCarriesLockedValue(t *testing.T) {
+func TestRoundChangeCarriesQuorumIntersectingLockedValue(t *testing.T) {
 	f := makeFixture(t)
 	engine, _ := NewEngine(f.genesis)
 	block0, proposal0 := f.proposal(t, engine, 0)
 	if err := engine.HandleProposal(proposal0); err != nil {
 		t.Fatal(err)
 	}
+	locks := map[string]ValidatorLock{}
 	for i := 0; i < 2; i++ {
 		vote, _ := BuildVote(block0, f.validators[i], f.keys[i])
 		finalized, err := engine.HandleVote(vote)
 		if err != nil || finalized {
 			t.Fatalf("vote %d finalized=%v err=%v", i, finalized, err)
 		}
+		locks[f.validators[i].ID] = ValidatorLock{ValidatorID: f.validators[i].ID, Round: 0, ValueHash: vote.ValueHash, Proof: vote}
 	}
 	value := blockValueHash(block0)
-	locks := map[string]ValidatorLock{
-		f.validators[0].ID: {ValidatorID: f.validators[0].ID, Round: 0, ValueHash: value},
-		f.validators[1].ID: {ValidatorID: f.validators[1].ID, Round: 0, ValueHash: value},
-	}
 	cert := advanceRoundOne(t, f, engine, locks)
 	if cert.LockedValueHash != value {
 		t.Fatalf("locked value=%s want=%s", cert.LockedValueHash, value)
@@ -134,6 +140,59 @@ func TestRoundChangeCarriesLockedValue(t *testing.T) {
 	}
 }
 
+func TestSingleProvenLockDoesNotControlRoundCertificate(t *testing.T) {
+	f := makeFixture(t)
+	engine, _ := NewEngine(f.genesis)
+	block0, proposal0 := f.proposal(t, engine, 0)
+	if err := engine.HandleProposal(proposal0); err != nil {
+		t.Fatal(err)
+	}
+	vote, _ := BuildVote(block0, f.validators[0], f.keys[0])
+	if finalized, err := engine.HandleVote(vote); err != nil || finalized {
+		t.Fatalf("partial vote finalized=%v err=%v", finalized, err)
+	}
+	locks := map[string]ValidatorLock{
+		f.validators[0].ID: {ValidatorID: f.validators[0].ID, Round: 0, ValueHash: vote.ValueHash, Proof: vote},
+	}
+	cert := advanceRoundOne(t, f, engine, locks)
+	if cert.LockedValueHash != "" {
+		t.Fatalf("single lock unexpectedly controlled certificate: %+v", cert)
+	}
+
+	committee := SelectCommittee(f.validators, f.genesis.Config.CommitteeTarget, engine.Status().FinalizedHash, 1, 0)
+	proposer, _ := ExpectedProposer(committee, 1, 1)
+	if _, err := engine.Draft(1, proposer.ID, []Operation{{Type: "noop", Key: "new-value"}}, f.now.Add(time.Minute)); err != nil {
+		t.Fatalf("single lock stalled later-round proposal: %v", err)
+	}
+}
+
+func TestRoundChangeRejectsUnprovedAndTamperedLocks(t *testing.T) {
+	f := makeFixture(t)
+	engine, _ := NewEngine(f.genesis)
+	block, proposal := f.proposal(t, engine, 0)
+	if err := engine.HandleProposal(proposal); err != nil {
+		t.Fatal(err)
+	}
+	vote, _ := BuildVote(block, f.validators[0], f.keys[0])
+	if _, err := engine.HandleVote(vote); err != nil {
+		t.Fatal(err)
+	}
+
+	unproved := RoundChange{NetworkID: f.genesis.NetworkID, Height: 1, FromRound: 0, ToRound: 1, ValidatorID: f.validators[0].ID, LockedRound: 0, LockedValueHash: vote.ValueHash}
+	unproved.Signature, _ = Sign(f.validators[0].Algorithm, f.keys[0], roundChangeSigningMessage(unproved))
+	if _, _, err := engine.HandleRoundChange(unproved); !errors.Is(err, ErrInvalidRoundChange) {
+		t.Fatalf("unproved lock err=%v", err)
+	}
+
+	tamperedProof := vote
+	tamperedProof.ValueHash = hashText("forged")
+	forged := RoundChange{NetworkID: f.genesis.NetworkID, Height: 1, FromRound: 0, ToRound: 1, ValidatorID: f.validators[0].ID, LockedRound: 0, LockedValueHash: tamperedProof.ValueHash, LockProof: &tamperedProof}
+	forged.Signature, _ = Sign(f.validators[0].Algorithm, f.keys[0], roundChangeSigningMessage(forged))
+	if _, _, err := engine.HandleRoundChange(forged); !errors.Is(err, ErrInvalidSignature) {
+		t.Fatalf("tampered lock proof err=%v", err)
+	}
+}
+
 func TestValidatorCannotOmitObservedLock(t *testing.T) {
 	f := makeFixture(t)
 	engine, _ := NewEngine(f.genesis)
@@ -162,8 +221,9 @@ func TestRoundProgressSurvivesRestart(t *testing.T) {
 	if _, err := engine.HandleVote(vote); err != nil {
 		t.Fatal(err)
 	}
-	value := blockValueHash(block)
-	locks := map[string]ValidatorLock{f.validators[0].ID: {ValidatorID: f.validators[0].ID, Round: 0, ValueHash: value}}
+	locks := map[string]ValidatorLock{
+		f.validators[0].ID: {ValidatorID: f.validators[0].ID, Round: 0, ValueHash: vote.ValueHash, Proof: vote},
+	}
 	advanceRoundOne(t, f, engine, locks)
 
 	store, err := OpenStore(t.TempDir(), f.genesis)
