@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	ConsensusStateVersion = 1
+	ConsensusStateVersion = 2
 	FeePoolAccount         = "system:pending-fees"
 )
 
@@ -24,25 +24,56 @@ type StateAccount struct {
 	Nonce        uint64 `json:"nonce"`
 }
 
+type ValidatorSetActivation struct {
+	ActivationHeight uint64              `json:"activationHeight"`
+	PlanHash         string              `json:"planHash"`
+	Validators       []testnet.Validator `json:"validators"`
+}
+
+type ProtocolActivation struct {
+	ActivationHeight uint64 `json:"activationHeight"`
+	PlanHash         string `json:"planHash"`
+	Version          int    `json:"version"`
+	MinimumSoftware  string `json:"minimumSoftware,omitempty"`
+}
+
 type ConsensusSnapshot struct {
-	Version             int            `json:"version"`
-	NetworkID           string         `json:"networkId"`
-	CarrotPolicyHash    string         `json:"carrotPolicyHash"`
-	Height               uint64         `json:"height"`
-	SettledRewardHeight uint64         `json:"settledRewardHeight"`
-	Accounts             []StateAccount `json:"accounts"`
+	Version               int                      `json:"version"`
+	NetworkID             string                   `json:"networkId"`
+	CarrotPolicyHash      string                   `json:"carrotPolicyHash"`
+	Height                uint64                   `json:"height"`
+	SettledRewardHeight   uint64                   `json:"settledRewardHeight"`
+	ActiveProtocolVersion int                      `json:"activeProtocolVersion"`
+	PendingUpgrade        *UpgradePlan             `json:"pendingUpgrade,omitempty"`
+	ProtocolHistory       []ProtocolActivation     `json:"protocolHistory"`
+	PendingValidatorSet   *ValidatorSetPlan        `json:"pendingValidatorSet,omitempty"`
+	ValidatorSetHistory   []ValidatorSetActivation `json:"validatorSetHistory"`
+	Accounts              []StateAccount           `json:"accounts"`
+}
+
+type TransitionStatus struct {
+	ActiveProtocolVersion int               `json:"activeProtocolVersion"`
+	ActiveValidatorCount  int               `json:"activeValidatorCount"`
+	PendingUpgrade        *UpgradePlan      `json:"pendingUpgrade,omitempty"`
+	PendingValidatorSet   *ValidatorSetPlan `json:"pendingValidatorSet,omitempty"`
 }
 
 type ConsensusState struct {
-	mu                sync.RWMutex
-	genesis           testnet.Genesis
-	networkID         string
-	policy            carrot.Policy
-	balances          map[string]int64
-	nonces            map[string]uint64
-	rewardAddressByID map[string]string
-	height            uint64
-	settledRewardHeight uint64
+	mu                    sync.RWMutex
+	genesis               testnet.Genesis
+	networkID             string
+	policy                carrot.Policy
+	balances              map[string]int64
+	nonces                map[string]uint64
+	rewardAddressByID     map[string]string
+	height                uint64
+	settledRewardHeight   uint64
+	activeValidators      []testnet.Validator
+	validatorSetHistory   []ValidatorSetActivation
+	pendingValidatorSet   *ValidatorSetPlan
+	activeProtocolVersion int
+	protocolHistory       []ProtocolActivation
+	pendingUpgrade        *UpgradePlan
 }
 
 func NewConsensusState(genesis testnet.Genesis, policy carrot.Policy) (*ConsensusState, error) {
@@ -55,13 +86,26 @@ func NewConsensusState(genesis testnet.Genesis, policy carrot.Policy) (*Consensu
 	if genesis.CarrotPolicyHash != policy.Hash() {
 		return nil, errors.New("CARROT policy hash mismatch")
 	}
+	validators := append([]testnet.Validator(nil), genesis.Validators...)
 	s := &ConsensusState{
-		genesis:           genesis,
-		networkID:         genesis.NetworkID,
-		policy:            policy,
-		balances:          map[string]int64{},
-		nonces:            map[string]uint64{},
-		rewardAddressByID: map[string]string{},
+		genesis:               genesis,
+		networkID:             genesis.NetworkID,
+		policy:                policy,
+		balances:              map[string]int64{},
+		nonces:                map[string]uint64{},
+		rewardAddressByID:     map[string]string{},
+		activeValidators:      validators,
+		activeProtocolVersion: genesis.Version,
+		validatorSetHistory: []ValidatorSetActivation{{
+			ActivationHeight: 1,
+			PlanHash:         "genesis",
+			Validators:       append([]testnet.Validator(nil), validators...),
+		}},
+		protocolHistory: []ProtocolActivation{{
+			ActivationHeight: 1,
+			PlanHash:         "genesis",
+			Version:          genesis.Version,
+		}},
 	}
 	for _, a := range policy.Allocations {
 		s.balances[a.Account] = a.Atoms
@@ -107,9 +151,34 @@ func (s *ConsensusState) Commit(t testnet.Transition) (string, error) {
 	}
 	s.balances = c.balances
 	s.nonces = c.nonces
+	s.rewardAddressByID = c.rewardAddressByID
 	s.height = c.height
 	s.settledRewardHeight = c.settledRewardHeight
+	s.activeValidators = c.activeValidators
+	s.validatorSetHistory = c.validatorSetHistory
+	s.pendingValidatorSet = c.pendingValidatorSet
+	s.activeProtocolVersion = c.activeProtocolVersion
+	s.protocolHistory = c.protocolHistory
+	s.pendingUpgrade = c.pendingUpgrade
 	return s.rootLocked(), nil
+}
+
+// ValidatorsForHeight implements testnet.ConsensusRules. It returns the
+// historical or already-committed scheduled set that controls the requested
+// height. A plan becomes consensus-effective at its activation height even
+// before that height's block is committed, because the prior block already
+// finalized the plan.
+func (s *ConsensusState) ValidatorsForHeight(height uint64) []testnet.Validator {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return append([]testnet.Validator(nil), s.validatorsForHeightLocked(height)...)
+}
+
+// ProtocolVersionForHeight implements testnet.ConsensusRules.
+func (s *ConsensusState) ProtocolVersionForHeight(height uint64) int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.protocolVersionForHeightLocked(height)
 }
 
 func (s *ConsensusState) Balance(a string) int64 {
@@ -134,6 +203,17 @@ func (s *ConsensusState) SettledRewardHeight() uint64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.settledRewardHeight
+}
+
+func (s *ConsensusState) TransitionStatus() TransitionStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return TransitionStatus{
+		ActiveProtocolVersion: s.activeProtocolVersion,
+		ActiveValidatorCount:  len(s.activeValidators),
+		PendingUpgrade:        cloneUpgradePlan(s.pendingUpgrade),
+		PendingValidatorSet:   cloneValidatorSetPlan(s.pendingValidatorSet),
+	}
 }
 
 func (s *ConsensusState) Snapshot() ConsensusSnapshot {
@@ -176,14 +256,20 @@ func (s *ConsensusState) SupplyReport() carrot.SupplyReport {
 
 func (s *ConsensusState) cloneLocked() *ConsensusState {
 	c := &ConsensusState{
-		genesis:             s.genesis,
-		networkID:           s.networkID,
-		policy:              s.policy,
-		balances:            map[string]int64{},
-		nonces:              map[string]uint64{},
-		rewardAddressByID:   map[string]string{},
-		height:              s.height,
-		settledRewardHeight: s.settledRewardHeight,
+		genesis:               s.genesis,
+		networkID:             s.networkID,
+		policy:                s.policy,
+		balances:              map[string]int64{},
+		nonces:                map[string]uint64{},
+		rewardAddressByID:     map[string]string{},
+		height:                s.height,
+		settledRewardHeight:   s.settledRewardHeight,
+		activeValidators:      append([]testnet.Validator(nil), s.activeValidators...),
+		validatorSetHistory:   cloneValidatorHistory(s.validatorSetHistory),
+		pendingValidatorSet:   cloneValidatorSetPlan(s.pendingValidatorSet),
+		activeProtocolVersion: s.activeProtocolVersion,
+		protocolHistory:       append([]ProtocolActivation(nil), s.protocolHistory...),
+		pendingUpgrade:        cloneUpgradePlan(s.pendingUpgrade),
 	}
 	for k, v := range s.balances {
 		c.balances[k] = v
@@ -197,12 +283,115 @@ func (s *ConsensusState) cloneLocked() *ConsensusState {
 	return c
 }
 
+func cloneValidatorHistory(in []ValidatorSetActivation) []ValidatorSetActivation {
+	out := make([]ValidatorSetActivation, len(in))
+	for i, h := range in {
+		out[i] = h
+		out[i].Validators = append([]testnet.Validator(nil), h.Validators...)
+	}
+	return out
+}
+
+func cloneValidatorSetPlan(in *ValidatorSetPlan) *ValidatorSetPlan {
+	if in == nil {
+		return nil
+	}
+	p := *in
+	p.Validators = append([]testnet.Validator(nil), in.Validators...)
+	return &p
+}
+
+func cloneUpgradePlan(in *UpgradePlan) *UpgradePlan {
+	if in == nil {
+		return nil
+	}
+	p := *in
+	return &p
+}
+
+func (s *ConsensusState) validatorsForHeightLocked(height uint64) []testnet.Validator {
+	var selected []testnet.Validator
+	for _, activation := range s.validatorSetHistory {
+		if activation.ActivationHeight <= height {
+			selected = activation.Validators
+		} else {
+			break
+		}
+	}
+	if s.pendingValidatorSet != nil && s.pendingValidatorSet.ActivationHeight <= height {
+		selected = s.pendingValidatorSet.Validators
+	}
+	if len(selected) == 0 {
+		selected = s.genesis.Validators
+	}
+	return selected
+}
+
+func (s *ConsensusState) protocolVersionForHeightLocked(height uint64) int {
+	version := s.genesis.Version
+	for _, activation := range s.protocolHistory {
+		if activation.ActivationHeight <= height {
+			version = activation.Version
+		} else {
+			break
+		}
+	}
+	if s.pendingUpgrade != nil && s.pendingUpgrade.ActivationHeight <= height {
+		version = s.pendingUpgrade.ToVersion
+	}
+	return version
+}
+
+func (s *ConsensusState) activateScheduledLocked(height uint64) error {
+	if s.pendingValidatorSet != nil {
+		if s.pendingValidatorSet.ActivationHeight < height {
+			return errors.New("missed validator-set activation height")
+		}
+		if s.pendingValidatorSet.ActivationHeight == height {
+			p := s.pendingValidatorSet
+			s.activeValidators = append([]testnet.Validator(nil), p.Validators...)
+			s.validatorSetHistory = append(s.validatorSetHistory, ValidatorSetActivation{
+				ActivationHeight: p.ActivationHeight,
+				PlanHash:         p.Hash,
+				Validators:       append([]testnet.Validator(nil), p.Validators...),
+			})
+			for _, v := range p.Validators {
+				s.rewardAddressByID[v.ID] = rewardAddress(v)
+			}
+			s.pendingValidatorSet = nil
+		}
+	}
+	if s.pendingUpgrade != nil {
+		if s.pendingUpgrade.ActivationHeight < height {
+			return errors.New("missed protocol-upgrade activation height")
+		}
+		if s.pendingUpgrade.ActivationHeight == height {
+			p := s.pendingUpgrade
+			if p.ToVersion > testnet.MaxSupportedProtocolVersion {
+				return fmt.Errorf("protocol version %d is not supported by this binary", p.ToVersion)
+			}
+			s.activeProtocolVersion = p.ToVersion
+			s.protocolHistory = append(s.protocolHistory, ProtocolActivation{
+				ActivationHeight: p.ActivationHeight,
+				PlanHash:         p.Hash,
+				Version:          p.ToVersion,
+				MinimumSoftware:  p.MinimumSoftware,
+			})
+			s.pendingUpgrade = nil
+		}
+	}
+	return nil
+}
+
 func (s *ConsensusState) apply(t testnet.Transition) error {
 	if t.NetworkID != s.networkID {
 		return testnet.ErrWrongNetwork
 	}
 	if t.Height != s.height+1 {
 		return testnet.ErrInvalidHeight
+	}
+	if err := s.activateScheduledLocked(t.Height); err != nil {
+		return err
 	}
 
 	var settlement *FinalitySettlement
@@ -255,8 +444,8 @@ func (s *ConsensusState) apply(t testnet.Transition) error {
 				return err
 			}
 		case ValidatorSetCommitmentOperationType:
-			if seenValidatorCommitment {
-				return errors.New("duplicate validator-set commitment")
+			if seenValidatorCommitment || s.pendingValidatorSet != nil {
+				return errors.New("validator-set commitment already pending")
 			}
 			plan, err := ParseValidatorSetCommitmentOperation(op)
 			if err != nil {
@@ -265,18 +454,26 @@ func (s *ConsensusState) apply(t testnet.Transition) error {
 			if err := plan.Validate(s.networkID, t.Height); err != nil {
 				return err
 			}
+			for _, v := range plan.Validators {
+				s.rewardAddressByID[v.ID] = rewardAddress(v)
+			}
+			s.pendingValidatorSet = cloneValidatorSetPlan(&plan)
 			seenValidatorCommitment = true
 		case UpgradeCommitmentOperationType:
-			if seenUpgradeCommitment {
-				return errors.New("duplicate protocol-upgrade commitment")
+			if seenUpgradeCommitment || s.pendingUpgrade != nil {
+				return errors.New("protocol-upgrade commitment already pending")
 			}
 			plan, err := ParseUpgradeCommitmentOperation(op)
 			if err != nil {
 				return err
 			}
-			if err := plan.Validate(s.networkID, testnet.ProtocolVersion, t.Height); err != nil {
+			if err := plan.Validate(s.networkID, s.activeProtocolVersion, t.Height); err != nil {
 				return err
 			}
+			if plan.ToVersion > testnet.MaxSupportedProtocolVersion {
+				return fmt.Errorf("upgrade target %d exceeds supported version %d", plan.ToVersion, testnet.MaxSupportedProtocolVersion)
+			}
+			s.pendingUpgrade = cloneUpgradePlan(&plan)
 			seenUpgradeCommitment = true
 		default:
 			return fmt.Errorf("unsupported consensus operation %q", op.Type)
@@ -294,7 +491,8 @@ func (s *ConsensusState) settlePrevious(rewardHeight uint64, previous testnet.Fi
 	if previous.Block.Height != rewardHeight || settlement.RewardHeight != rewardHeight || settlement.BlockHash != previous.Block.Hash || settlement.Round != previous.Block.Round {
 		return errors.New("settlement does not match previous block")
 	}
-	committee := testnet.SelectCommittee(s.genesis.Validators, s.genesis.Config.CommitteeTarget, previous.Block.PreviousHash, previous.Block.Height, previous.Block.Round)
+	validators := s.validatorsForHeightLocked(rewardHeight)
+	committee := testnet.SelectCommittee(validators, s.genesis.Config.CommitteeTarget, previous.Block.PreviousHash, previous.Block.Height, previous.Block.Round)
 	quorum := testnet.QuorumFor(s.genesis.Config, len(committee))
 	seen := map[string]struct{}{}
 	ids := []string{}
@@ -394,12 +592,17 @@ func (s *ConsensusState) snapshotLocked() ConsensusSnapshot {
 		accounts = append(accounts, StateAccount{Account: k, BalanceAtoms: s.balances[k], Nonce: s.nonces[k]})
 	}
 	return ConsensusSnapshot{
-		Version:             ConsensusStateVersion,
-		NetworkID:           s.networkID,
-		CarrotPolicyHash:    s.policy.Hash(),
-		Height:               s.height,
-		SettledRewardHeight: s.settledRewardHeight,
-		Accounts:             accounts,
+		Version:               ConsensusStateVersion,
+		NetworkID:             s.networkID,
+		CarrotPolicyHash:      s.policy.Hash(),
+		Height:                s.height,
+		SettledRewardHeight:   s.settledRewardHeight,
+		ActiveProtocolVersion: s.activeProtocolVersion,
+		PendingUpgrade:        cloneUpgradePlan(s.pendingUpgrade),
+		ProtocolHistory:       append([]ProtocolActivation(nil), s.protocolHistory...),
+		PendingValidatorSet:   cloneValidatorSetPlan(s.pendingValidatorSet),
+		ValidatorSetHistory:   cloneValidatorHistory(s.validatorSetHistory),
+		Accounts:              accounts,
 	}
 }
 
