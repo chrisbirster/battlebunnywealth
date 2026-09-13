@@ -16,14 +16,15 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 - [Attested participation](attested-participation.md) — provider adapters, key-bound attestation, mobile integration, testnet gate, and multi-device weighting.
 - [Proof-of-Play simulator](proof-of-play-simulator.md) — deterministic attacker/population simulation, capture probabilities, liveness, churn, provider outages, and attack-cost assumptions.
 - [Permissioned testnet](permissioned-testnet.md) — four-phone bootstrap, validator activation, node separation, peer defenses, and non-economic v0.9 testnet.
-- [Testnet consensus](testnet-consensus.md) — deterministic state execution, historical validator sets, protocol activation, finality settlement, persistence, and recovery.
-- [Round-change protocol](round-change-protocol.md) — v0.14 signed timeout certificates, proposer rotation, value locks, crash recovery, and equivocation evidence.
+- [Testnet consensus](testnet-consensus.md) — deterministic state execution, historical validator sets, protocol activation, signed lock proofs, round change, finality settlement, persistence, and recovery.
+- [Round-change protocol](round-change-protocol.md) — v0.14 proposer rotation, timeout certificates, value-bound votes, quorum-intersection lock proofs, and crash-safe round recovery.
 - [Distributed testnet evidence](distributed-testnet-evidence.md) — checkpoint comparison, latency/availability collection, pinned network metadata, and the live-operator evidence gate.
 - [v0.12 public testnet](public-testnet-v0.12.md) — consensus TEST-CARROT execution, peer diversity, transition commitments, and public funding policy.
 - [v0.12 security-review package](security-review-v0.12.md) — external-review scope, invariants, adversarial checklist, commands, known limitations, and production release blockers.
 - [v0.13 security-review rehearsal](security-review-v0.13-rehearsal.md) — internal pre-audit exercise, findings, known limitations, and external-review handoff notes.
+- [v0.14 security-review handoff](security-review-v0.14-handoff.md) — round-change/lock-proof review scope, remediated findings, and remaining production blockers.
 - [Testnet incident response](testnet-incident-response.md) — validator/node/wallet compromise, finality halts, upgrades, replay recovery, and evidence preservation.
-- [Testnet operations](testnet-operations.md) — local node/cluster operation, soak tests, round-change chaos, snapshots, and checkpoints.
+- [Testnet operations](testnet-operations.md) — local node/cluster operation, soak tests, round-change chaos, snapshots, checkpoints, and evidence collection.
 - [Identity and attestation](identity-and-attestation.md) — player/account/device separation, ATProto, passkeys, App Attest, and Play Integrity.
 - [Economy](economy.md) — Bunny Bucks vs. CARROT and ranked-fairness boundaries.
 - [CARROT protocol](carrot-protocol.md) — v0.10 fixed supply, allocations, vesting, issuance, fees, custody, policy hash, and supply reporting.
@@ -53,6 +54,7 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 13. A finalized protocol-upgrade commitment cannot load arbitrary code. Nodes must explicitly support the scheduled version or fail closed.
 14. Public snapshots/checkpoints are verification aids, not trusted substitutes for finality verification or genesis replay.
 15. Committee membership is fixed for one height across consensus rounds; proposer rotation requires a quorum-signed round certificate.
-16. Validators carry value locks across round changes and may not vote for a conflicting value at the same height.
-17. Equivocation evidence is cryptographically verifiable but does not automatically slash, confiscate, ban, or remove a validator.
-18. Local chaos testing and evidence tooling do not count as real multi-provider/geographic public-testnet evidence.
+16. A claimed value lock must carry the validator's signed value-bound vote. Certificate-wide carry-forward requires matching proofs at `max(1, 2Q-N)` rather than one validator's claim.
+17. Validators remain individually bound by their proven locks and may not vote for a conflicting value at the same height.
+18. Equivocation evidence is cryptographically verifiable but does not automatically slash, confiscate, ban, or remove a validator.
+19. Local chaos testing and evidence tooling do not count as real multi-provider/geographic public-testnet evidence.
