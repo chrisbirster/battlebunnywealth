@@ -15,10 +15,6 @@ var (
 	ErrLockedValue        = errors.New("validator is locked on another value")
 )
 
-// RoundChange is a validator-signed request to move one height from FromRound
-// to ToRound. Honest validator clients carry their highest value lock so a new
-// proposer cannot ignore a value that may already have reached finality on a
-// differently connected peer.
 type RoundChange struct {
 	NetworkID       string `json:"networkId"`
 	Height          uint64 `json:"height"`
@@ -30,9 +26,6 @@ type RoundChange struct {
 	Signature       string `json:"signature"`
 }
 
-// RoundCertificate is a quorum of RoundChange messages from the fixed
-// committee for this height. Committee membership is intentionally stable
-// across rounds; only the proposer rotates.
 type RoundCertificate struct {
 	NetworkID       string        `json:"networkId"`
 	Height          uint64        `json:"height"`
@@ -64,15 +57,7 @@ func BuildRoundChange(networkID string, height uint64, fromRound uint32, validat
 	if lockedValueHash == "" {
 		lockedRound = 0
 	}
-	rc := RoundChange{
-		NetworkID:       networkID,
-		Height:          height,
-		FromRound:       fromRound,
-		ToRound:         fromRound + 1,
-		ValidatorID:     validator.ID,
-		LockedRound:     lockedRound,
-		LockedValueHash: lockedValueHash,
-	}
+	rc := RoundChange{NetworkID: networkID, Height: height, FromRound: fromRound, ToRound: fromRound + 1, ValidatorID: validator.ID, LockedRound: lockedRound, LockedValueHash: lockedValueHash}
 	sig, err := Sign(validator.Algorithm, privateKey, roundChangeSigningMessage(rc))
 	if err != nil {
 		return RoundChange{}, err
@@ -82,17 +67,10 @@ func BuildRoundChange(networkID string, height uint64, fromRound uint32, validat
 }
 
 func roundChangeSigningMessage(rc RoundChange) string {
-	return fmt.Sprintf(
-		"bbw-round-change/v1\nnetwork=%s\nheight=%d\nfromRound=%d\ntoRound=%d\nvalidator=%s\nlockedRound=%d\nlockedValue=%s",
-		rc.NetworkID,
-		rc.Height,
-		rc.FromRound,
-		rc.ToRound,
-		rc.ValidatorID,
-		rc.LockedRound,
-		rc.LockedValueHash,
-	)
+	return fmt.Sprintf("bbw-round-change/v1\nnetwork=%s\nheight=%d\nfromRound=%d\ntoRound=%d\nvalidator=%s\nlockedRound=%d\nlockedValue=%s", rc.NetworkID, rc.Height, rc.FromRound, rc.ToRound, rc.ValidatorID, rc.LockedRound, rc.LockedValueHash)
 }
+
+func BlockValueHash(b Block) string { return blockValueHash(b) }
 
 func blockValueHash(b Block) string {
 	value := struct {
@@ -103,15 +81,7 @@ func blockValueHash(b Block) string {
 		PreviousState string      `json:"previousState"`
 		StateRoot     string      `json:"stateRoot"`
 		Operations    []Operation `json:"operations"`
-	}{
-		Version:       b.Version,
-		NetworkID:     b.NetworkID,
-		Height:        b.Height,
-		PreviousHash:  b.PreviousHash,
-		PreviousState: b.PreviousState,
-		StateRoot:     b.StateRoot,
-		Operations:    b.Operations,
-	}
+	}{Version: b.Version, NetworkID: b.NetworkID, Height: b.Height, PreviousHash: b.PreviousHash, PreviousState: b.PreviousState, StateRoot: b.StateRoot, Operations: b.Operations}
 	raw, _ := json.Marshal(value)
 	return hashText(string(raw))
 }
