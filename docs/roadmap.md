@@ -70,8 +70,10 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 
 - fixed committee membership across rounds at a height, with proposer rotation by round
 - validator-signed round-change messages and quorum round certificates
+- new live votes sign the consensus value hash; claimed locks carry the validator's signed vote as proof
+- a carried global lock requires matching proofs at the quorum-intersection threshold `max(1, 2Q-N)`, so one validator cannot dictate the next-round value
 - persistent value locks prevent a validator from voting for conflicting state transitions later in the same height
-- later-round finalized blocks embed their round certificate for independent replay verification
+- later-round finalized blocks embed their round certificate and lock proofs for independent replay verification
 - in-progress round/lock/certificate state survives crashes; stale round snapshots lose to durably finalized history
 - peer catch-up now durably persists independently verified imported blocks
 - cryptographically verifiable proposer/vote equivocation evidence without automatic slashing or confiscation
