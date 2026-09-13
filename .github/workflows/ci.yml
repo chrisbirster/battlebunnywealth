@@ -33,6 +33,10 @@ jobs:
       - name: Build web
         working-directory: web
         run: npm run build
+      - name: Build testnet package
+        run: go build ./internal/testnet
+      - name: Compile testnet tests
+        run: go test ./internal/testnet -run '^$'
       - name: Test testnet genesis and protocol commitment
         run: go test ./internal/testnet -run '^TestGenesisCommitsCARROTPolicy$'
       - name: Test testnet voting and fault rejection
