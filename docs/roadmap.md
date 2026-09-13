@@ -1,75 +1,52 @@
 # Roadmap
 
-## v0.1 — Foundation — implemented on `dev`
+## v0.1–v0.8 — Foundation through simulation — implemented on `dev`
 
-- Go binary embeds the Vite/Solid SPA.
-- Proof-of-Play protocol scaffold, architecture/security/economy docs, and feature -> dev -> main/tag discipline.
-
-## v0.2 — Warren Wars vertical slice — implemented on `dev`
-
-- Deterministic grid simulation, original arena, bombs/blasts/crates/pickups, equal-start ranked rules, bots, replay, keyboard/touch/gamepad, and 1,000 seeded CI matches.
-
-## v0.3 — Player profile + seasonal idle economy — implemented on `dev`
-
-- Persistent player-created bunny profile, three businesses, offline earnings, Bunny Bucks, upgrades/synergies, NPC orientation, season standings, and cosmetic-only turn-in.
-
-## v0.4 — Seasons + story progression — implemented on `dev`
-
-- Timed season lifecycle, archives, NPC story beats, locations, Warren themes, persistent awards, season resets, telemetry, campaign UI, and no ranked-power rewards.
-
-## v0.5 — Account and portable identity — implemented on `dev`
-
-- Passkeys/WebAuthn, hashed sessions, per-account game state, optional `did:plc`, device enrollment/revocation, and browser P-256 device keys.
-
-## v0.6 — Proof-of-Play missions and authority — implemented on `dev`
-
-- Signed optional missions, daily limits, bounded/decaying authority, newcomer weighting, deterministic weighted committee sampling, and Proof-of-Play UI.
-
-## v0.7 — Attested participation prototype — implemented on `dev`
-
-- Key-bound attestation challenges, native Apple/Android spikes, Play Integrity policy, App Attest integration boundary, attested eligibility, and diminishing multi-device authority.
-
-## v0.8 — Proof-of-Play simulator — implemented on `dev`
-
-- Deterministic attacker/population simulator, bot/phone farms, delayed attackers, outages/churn, collusion, capture/liveness/concentration/cost metrics, attack sweeps, and CI gates.
+Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play missions/authority, device attestation, and deterministic attack simulation are implemented.
 
 ## v0.9 — Permissioned testnet — implemented on `dev`
 
-- Four-device genesis with 3-of-4 finality.
-- Validator maturation and rate-limited activation.
-- Full-node identity separated from participant/device voting identity.
-- Deterministic committee/proposer selection, signed proposals/votes/finality certificates, persistence/restart/catch-up, permissioned signed peer relay, and five-engine local smoke harness.
-- Four-phone vs. 100-real-phone bootstrap security gate.
-- Hardened Google Play Integrity and complete Apple App Attest enrollment/assertion verification.
-- No economically valuable CARROT.
+- four-device genesis with 3-of-4 bootstrap finality
+- validator maturation and rate-limited activation
+- node identity separated from participant/device voting identity
+- deterministic committee/proposer selection, signed finality, persistence/restart/catch-up, signed peer relay, and local cluster smoke tests
+- four-phone versus 100-real-phone security gate
+- hardened Play Integrity and complete App Attest enrollment/assertion verification
 
 ## v0.10 — CARROT protocol specification — implemented on `dev`
 
-- `carrot/1` executable fixed-supply policy.
-- 21,000,000 maximum CARROT with 8 decimal places.
-- Genesis-reserve accounting: 20% founder/admin, 60% Proof-of-Play issuance, 10% ecosystem, 5% community, 5% security/public goods.
-- One-year founder cliff and four-year total linear vest.
-- 32 declining four-year issuance eras that exhaust the participation reserve exactly using integer arithmetic.
-- Finality-signer equal reward model; ordinary missions do not directly pay CARROT.
-- Supply-neutral fee model; testnet minimum fee remains zero.
-- 2-of-3 founder custody target, 3-of-5 treasury target, seven-day key-rotation delay; treasury spending disabled in v0.10.
-- Deterministic supply/circulation reporting and conservation tests.
-- Permissioned-testnet protocol v2 genesis commits the frozen CARROT policy hash.
-- CI drift gate for policy hash, supply, allocation, vesting, issuance, fee, and conservation invariants.
-- Still no economically valuable CARROT or public token transaction system.
+- fixed 21,000,000 CARROT maximum with 8 decimals
+- 20/60/10/5/5 genesis-reserve allocation
+- one-year founder cliff / four-year vest
+- deterministic declining Proof-of-Play release
+- supply-neutral fees, custody targets, supply reporting, and CARROT policy-hash commitment in testnet genesis
+- no economically valuable activation
 
-## v0.11 — Adversarial public testnet
+## v0.11 — Adversarial public testnet — implemented on `dev`
 
-- open enrollment
-- valueless/test CARROT represented in consensus transactions
-- wallet/transaction signature format
-- public Sybil/device-farm attempts
-- authority grinding tests
-- committee bribery/collusion experiments
-- treasury/governance test implementation
-- bug bounty
-- protocol upgrade exercises
-- economics and legal review
+- Ed25519 TEST-CARROT wallets and `tcarrot1` addresses
+- signed network-bound transfers with exact nonce, expiry, transaction ID, and replay protection
+- bounded public mempool plus deterministic `test-carrot-transfer` operation representation
+- permissionless self-signed observer/full-node discovery with expiry and per-host/total anti-flood limits; node count creates zero votes
+- public validator applications with key-possession proof and server-side attestation/authority eligibility
+- existing 30-day maturation and rate-limited activation preserved
+- dry-run signed governance for protocol-upgrade and treasury proposals; treasury execution disabled
+- deterministic upgrade plans with seven-day minimum notice
+- 100-attacker CI gate for node flooding, invalid transaction spam, and validator-candidate flooding
+- TEST-CARROT remains explicitly valueless
+
+v0.11 deliberately stops at adversarial transaction admission and deterministic block-operation representation. Arbitrary public wallet transfers are not yet executed inside replicated consensus state.
+
+## v0.12 — Consensus transaction execution + public-network hardening
+
+- execute TEST-CARROT transfers in deterministic replicated state
+- mempool-to-block selection rules and consensus-visible balances/nonces
+- tie deterministic Proof-of-Play release to finality signer identities in the state transition
+- public peer-diversity and eclipse testing across independent hosts
+- finalized validator-set transition commitments
+- finalized protocol-upgrade commitments and recovery exercises
+- public test-funding policy
+- prepare external security-review package
 
 ## v1.0 candidate — Game + network readiness
 
@@ -83,12 +60,10 @@
 
 ### Network
 
-- attested enrollment
-- mission/authority model validated by simulation and public testing
+- attested enrollment and public adversarial evidence
 - robust committee/finality behavior
 - deterministic fixed-supply CARROT accounting
-- founder/admin allocation and lock policy publicly documented
-- wallet/treasury/governance path reviewed
-- security/legal review appropriate for an economically valuable launch
+- reviewed wallet/treasury/governance path
+- external security/legal/tax/privacy/app-store review appropriate for an economically valuable launch
 
-Economic activation should happen only when those gates are satisfied, not merely because the code can represent CARROT.
+Economic activation happens only after those gates are satisfied, not merely because the code can represent CARROT.
