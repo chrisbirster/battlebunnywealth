@@ -12,18 +12,18 @@ import (
 )
 
 type RoundChaosReport struct {
-	Blocks             int    `json:"blocks"`
-	Seed               int64  `json:"seed"`
-	FinalHeight        uint64 `json:"finalHeight"`
-	FinalizedHash      string `json:"finalizedHash"`
-	FinalStateRoot     string `json:"finalStateRoot"`
-	RoundChanges       int    `json:"roundChanges"`
-	LockedRoundChanges int    `json:"lockedRoundChanges"`
-	Partitions         int    `json:"partitions"`
-	Restarts           int    `json:"restarts"`
-	DuplicateMessages  int    `json:"duplicateMessages"`
-	ReorderedDeliveries int   `json:"reorderedDeliveries"`
-	ClockSkewSamples   int    `json:"clockSkewSamples"`
+	Blocks                int    `json:"blocks"`
+	Seed                  int64  `json:"seed"`
+	FinalHeight           uint64 `json:"finalHeight"`
+	FinalizedHash         string `json:"finalizedHash"`
+	FinalStateRoot        string `json:"finalStateRoot"`
+	RoundChanges          int    `json:"roundChanges"`
+	LockedRoundChanges    int    `json:"lockedRoundChanges"`
+	Partitions            int    `json:"partitions"`
+	Restarts              int    `json:"restarts"`
+	DuplicateMessages     int    `json:"duplicateMessages"`
+	ReorderedDeliveries   int    `json:"reorderedDeliveries"`
+	ClockSkewSamples      int    `json:"clockSkewSamples"`
 }
 
 type chaosNode struct {
@@ -129,7 +129,6 @@ func RunRoundChaos(blocks int, seed int64) (RoundChaosReport, error) {
 			}
 
 			lockCount := rng.Intn(quorum)
-			valueHash := testnet.BlockValueHash(block0)
 			locked := map[string]testnet.ValidatorLock{}
 			for i := 0; i < lockCount; i++ {
 				validator := committee[i]
@@ -143,7 +142,7 @@ func RunRoundChaos(blocks int, seed int64) (RoundChaosReport, error) {
 						return report, fmt.Errorf("height %d partial lock vote node %d finalized=%v err=%v", height, index, finalized, err)
 					}
 				}
-				locked[validator.ID] = testnet.ValidatorLock{ValidatorID: validator.ID, Round: 0, ValueHash: valueHash}
+				locked[validator.ID] = testnet.ValidatorLock{ValidatorID: validator.ID, Round: 0, ValueHash: vote.ValueHash, Proof: vote}
 			}
 			if lockCount > 0 {
 				report.LockedRoundChanges++
@@ -153,7 +152,12 @@ func RunRoundChaos(blocks int, seed int64) (RoundChaosReport, error) {
 			for i := 0; i < quorum; i++ {
 				validator := committee[i]
 				lock := locked[validator.ID]
-				change, err := testnet.BuildRoundChange(genesis.NetworkID, height, 0, validator, keys[validator.ID], lock.Round, lock.ValueHash)
+				var change testnet.RoundChange
+				if lock.ValueHash != "" {
+					change, err = testnet.BuildRoundChange(genesis.NetworkID, height, 0, validator, keys[validator.ID], lock.Round, lock.ValueHash, lock.Proof)
+				} else {
+					change, err = testnet.BuildRoundChange(genesis.NetworkID, height, 0, validator, keys[validator.ID], 0, "")
+				}
 				if err != nil {
 					return report, err
 				}
