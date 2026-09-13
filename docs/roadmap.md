@@ -50,7 +50,7 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - external security-review handoff package and explicit known-limitations/release-blocker list
 - TEST-CARROT remains explicitly valueless; no production CARROT activation
 
-## v0.13 — Controlled transition activation + long-running public testnet — implemented on feature branch / merge-gated
+## v0.13 — Controlled transition activation + long-running public testnet — implemented on `dev`
 
 - finalized validator-set commitments activate deterministically at the committed height
 - historical validator sets remain available for committee, finality-certificate, and reward-settlement verification
