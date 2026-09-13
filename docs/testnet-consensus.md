@@ -35,13 +35,15 @@ Fixing the committee across rounds preserves quorum-intersection assumptions. On
 
 Every height starts at round zero. The expected proposer builds operations, previews the deterministic state transition, signs the resulting block hash, and committee members may sign `commit` votes.
 
-## Value locks
+## Value locks and signed proofs
 
-When a validator signs a commit vote it records a value lock for that height. The lock hashes the consensus value: protocol version, network, height, parent, prior state, resulting state root, and operations.
+New live commit votes bind both the concrete block hash and a proposer-independent consensus `valueHash`. The value hash commits to protocol version, network, height, parent, prior state, resulting state root, and operations.
 
 It excludes proposer ID, timestamp, round, and round certificate. A later proposer can therefore re-propose the same transition without changing the locked value.
 
-A validator may not vote for a different value later in the same height.
+When a validator signs a live commit vote it records a local lock containing the validator ID, locked round, value hash, and the signed vote itself as cryptographic proof. A validator may not vote for a different value later in the same height.
+
+Legacy finalized round-zero testnet history from before v0.14 can still replay the older vote-signature domain without a value hash. New live votes use the value-bound signature domain, and later-round finality requires value-bound votes.
 
 ## Round change
 
@@ -52,15 +54,24 @@ A round-change message commits to:
 - network and height;
 - old and requested next round;
 - validator ID;
-- validator's highest local locked round/value.
+- validator's highest local locked round/value;
+- the signed value-bound vote proving that lock, if a lock is claimed.
 
-A validator that is already locally locked must disclose that exact lock.
+A claimed lock without its signed vote proof is invalid. The proof must match the same network, height, validator, locked round, and value hash, and its validator signature must verify.
 
-A quorum of distinct committee round-change signatures creates a `RoundCertificate`. The certificate carries the highest disclosed lock. Conflicting values at the same highest lock round fail closed.
+A quorum of distinct committee round-change signatures creates a `RoundCertificate`, but one validator's lock is not enough to constrain the entire next round. For committee size `N` and quorum `Q`, matching lock proofs must reach:
 
-A block for round greater than zero must embed the round certificate that authorizes that round. If the certificate carries a lock, the new proposer must propose the same consensus value.
+```text
+max(1, 2Q - N)
+```
 
-The full certificate remains inside a later-round finalized block so imported history can be verified without trusting the importing node's prior in-memory timeout state.
+before the certificate carries that value as a global lock. This is the minimum intersection of two quorum-sized sets. In the four-device 3-of-4 bootstrap, two matching proven locks are required.
+
+Among qualifying lock groups, the highest locked round is carried forward. Conflicting qualifying values at the same highest round fail closed. Individual validators remain locally bound by their own proven locks even when those locks do not reach the certificate-wide threshold.
+
+A block for round greater than zero must embed the round certificate that authorizes that round. If the certificate carries a qualifying lock, the new proposer must propose the same consensus value.
+
+The full certificate and its lock proofs remain inside a later-round finalized block so imported history can be verified without trusting the importing node's prior in-memory timeout state.
 
 See [Round-change protocol](round-change-protocol.md) for the detailed safety model.
 
@@ -70,11 +81,13 @@ For committees up to 15 members, bootstrap quorum is `ceil(3/4 * N)`. Four membe
 
 A node never lowers quorum because validators are offline. If quorum cannot be reached, finality stops.
 
-v0.14 deliberately prefers a halt to unsafe unlocking when lock evidence is ambiguous.
+v0.14 deliberately prefers a halt to unsafe unlocking when qualifying lock evidence is ambiguous.
 
 ## Finality certificate
 
-A finalized block carries the proposer signature and individual signed committee votes. Nodes independently check network, active protocol version, height, parent, transition, committee, proposer, round authorization, vote signatures, distinct validator IDs, and quorum before import.
+A finalized block carries the proposer signature and individual signed committee votes. Nodes independently check network, active protocol version, height, parent, transition, committee, proposer, round authorization, vote signatures, value hashes, distinct validator IDs, and quorum before import.
+
+Later-round blocks additionally carry the round certificate and signed lock proofs that authorized proposer rotation and any carried value.
 
 No BLS aggregation is used yet; the explicit vote list is intentionally auditable.
 
@@ -115,11 +128,11 @@ No chain operation downloads or executes arbitrary replacement code.
 
 ## Persistence and recovery
 
-Finalized blocks are appended to `blocks.ndjson`. In-progress round state is atomically stored in `round-state.json`, including current round, validator locks, and verified round-certificate chain.
+Finalized blocks are appended to `blocks.ndjson`. In-progress round state is atomically stored in `round-state.json`, including current round, validator locks with signed vote proofs, and the verified round-certificate chain.
 
-On restart, the engine reconstructs finalized history from genesis and then restores only a round snapshot for the exact next height. If a crash leaves a stale lower-height round snapshot after a finalized block was already fsynced, finalized history wins and the stale snapshot is deleted.
+On restart, the engine reconstructs finalized history from genesis, re-verifies persisted lock proofs, and then restores only a round snapshot for the exact next height. If a crash leaves a stale lower-height round snapshot after a finalized block was already fsynced, finalized history wins and the stale snapshot is deleted.
 
-Peer catch-up independently verifies imported blocks and durably appends them locally. A restarted node therefore retains peer-synced finality.
+Peer catch-up independently verifies imported blocks, round certificates, lock proofs, finality certificates, state transitions, and state roots, then durably appends verified history locally. A restarted node therefore retains peer-synced finality.
 
 ## Snapshots and checkpoints
 
@@ -139,10 +152,10 @@ An optional trusted server-side network map adds ASN/provider caps. The map is c
 
 `pop-soak` runs the v0.13 1,100-block transition/restart soak.
 
-`pop-round-chaos` adds deterministic round changes, partial locks, proposer rotation, reordered and duplicate messages, temporary partitions, clock-skewed proposal timestamps, rolling full replay, convergence checks, and TEST-CARROT supply checks.
+`pop-round-chaos` adds deterministic round changes, partial proven locks, quorum-intersection lock selection, proposer rotation, reordered and duplicate messages, temporary partitions, clock-skewed proposal timestamps, rolling full replay, convergence checks, and TEST-CARROT supply checks.
 
 These are CI simulations, not claims about real geographic/provider diversity.
 
 ## Limitations
 
-The protocol is not formally verified. Adaptive corruption, sophisticated scheduler attacks, automatic slashing policy, production timeout tuning, arbitrary future upgrade semantics, and real multi-provider Internet evidence remain open before a production-security claim.
+The protocol is not formally verified. v0.14 adds explicit round changes, signed lock proofs, and a quorum-intersection carried-lock rule, but it is still a conservative research design rather than a formally reviewed Tendermint/HotStuff implementation. Adaptive corruption, sophisticated scheduler attacks, a fully specified adaptive pacemaker, automatic slashing policy, production timeout tuning, arbitrary future upgrade semantics, and real multi-provider Internet evidence remain open before a production-security claim.
