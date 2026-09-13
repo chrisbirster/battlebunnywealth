@@ -66,7 +66,7 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - v0.13 internal security-review rehearsal records unresolved risks without claiming an external audit
 - TEST-CARROT remains non-economic
 
-## v0.14 — Round-change protocol + distributed-evidence tooling — implemented on feature branch / merge-gated
+## v0.14 — Round-change protocol + distributed-evidence tooling — implemented on `dev`
 
 - fixed committee membership across rounds at a height, with proposer rotation by round
 - validator-signed round-change messages and quorum round certificates
