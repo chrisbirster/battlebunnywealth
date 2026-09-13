@@ -16,6 +16,10 @@ type LedgerView interface {
 	SupplyReport() carrot.SupplyReport
 }
 
+type transitionView interface {
+	TransitionStatus() TransitionStatus
+}
+
 type HTTPServer struct {
 	Base      http.Handler
 	NetworkID string
@@ -112,19 +116,26 @@ func (s *HTTPServer) handleStatus(w http.ResponseWriter) {
 		mempoolCount = s.Mempool.Count()
 	}
 	funding := DefaultTestFundingPolicy()
-	s.writeJSON(w, http.StatusOK, map[string]any{
-		"networkId":         s.NetworkID,
-		"height":            s.currentHeight(),
-		"publicPeers":       peers,
-		"mempool":           mempoolCount,
-		"validatorCandidates": pending,
-		"activeValidators":  active,
-		"carrotPolicyHash":  carrot.DefaultPolicy().Hash(),
+	status := map[string]any{
+		"networkId":             s.NetworkID,
+		"height":                s.currentHeight(),
+		"publicPeers":           peers,
+		"mempool":               mempoolCount,
+		"validatorCandidates":   pending,
+		"activeValidators":      active,
+		"carrotPolicyHash":      carrot.DefaultPolicy().Hash(),
 		"testFundingPolicyHash": funding.Hash,
-		"asset":             "TEST-CARROT",
-		"economicValue":     false,
-		"consensusExecution": true,
-	})
+		"asset":                 "TEST-CARROT",
+		"economicValue":         false,
+		"consensusExecution":    true,
+	}
+	if view, ok := s.Ledger.(transitionView); ok {
+		transitions := view.TransitionStatus()
+		status["transitions"] = transitions
+		status["activeValidators"] = transitions.ActiveValidatorCount
+		status["protocolVersion"] = transitions.ActiveProtocolVersion
+	}
+	s.writeJSON(w, http.StatusOK, status)
 }
 
 func (s *HTTPServer) decode(w http.ResponseWriter, r *http.Request, out any) bool {
