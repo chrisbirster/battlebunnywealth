@@ -33,6 +33,10 @@ jobs:
       - name: Build web
         working-directory: web
         run: npm run build
+      - name: Test testnet consensus
+        run: go test ./internal/testnet
+      - name: Gate replicated TEST-CARROT state
+        run: go test ./internal/publictestnet
       - name: Test Go
         run: go test ./...
       - name: Smoke Proof-of-Play simulator
