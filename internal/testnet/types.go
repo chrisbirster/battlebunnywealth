@@ -106,9 +106,34 @@ func (g Genesis) Validate() error {
 func hashGenesis(g Genesis) string { g.Hash = ""; raw, _ := json.Marshal(g); sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
 
 type Operation struct { Type string `json:"type"`; Key string `json:"key,omitempty"`; Value string `json:"value,omitempty"` }
-type Block struct { Version int `json:"version"`; NetworkID string `json:"networkId"`; Height uint64 `json:"height"`; Round uint32 `json:"round"`; PreviousHash string `json:"previousHash"`; PreviousState string `json:"previousState"`; StateRoot string `json:"stateRoot"`; CommitteeHash string `json:"committeeHash"`; ProposerID string `json:"proposerId"`; TimestampUnix int64 `json:"timestampUnix"`; Operations []Operation `json:"operations"`; Hash string `json:"hash"` }
+type Block struct {
+	Version          int               `json:"version"`
+	NetworkID        string            `json:"networkId"`
+	Height           uint64            `json:"height"`
+	Round            uint32            `json:"round"`
+	PreviousHash     string            `json:"previousHash"`
+	PreviousState    string            `json:"previousState"`
+	StateRoot        string            `json:"stateRoot"`
+	CommitteeHash    string            `json:"committeeHash"`
+	ProposerID       string            `json:"proposerId"`
+	TimestampUnix    int64             `json:"timestampUnix"`
+	RoundCertificate *RoundCertificate `json:"roundCertificate,omitempty"`
+	Operations       []Operation       `json:"operations"`
+	Hash             string            `json:"hash"`
+}
 type Proposal struct { Block Block `json:"block"`; Signature string `json:"signature"` }
 type Vote struct { NetworkID string `json:"networkId"`; Height uint64 `json:"height"`; Round uint32 `json:"round"`; BlockHash string `json:"blockHash"`; ValidatorID string `json:"validatorId"`; Decision string `json:"decision"`; Signature string `json:"signature"` }
 type FinalityCertificate struct { Height uint64 `json:"height"`; Round uint32 `json:"round"`; BlockHash string `json:"blockHash"`; CommitteeHash string `json:"committeeHash"`; Quorum int `json:"quorum"`; Votes []Vote `json:"votes"` }
 type FinalizedBlock struct { Block Block `json:"block"`; ProposalSignature string `json:"proposalSignature"`; Certificate FinalityCertificate `json:"certificate"` }
-type Status struct { NetworkID string `json:"networkId"`; GenesisHash string `json:"genesisHash"`; Height uint64 `json:"height"`; FinalizedHash string `json:"finalizedHash"`; StateRoot string `json:"stateRoot"`; CommitteeSize int `json:"committeeSize"`; Quorum int `json:"quorum"`; PendingProposal string `json:"pendingProposal,omitempty"` }
+type Status struct {
+	NetworkID        string `json:"networkId"`
+	GenesisHash      string `json:"genesisHash"`
+	Height           uint64 `json:"height"`
+	CurrentRound     uint32 `json:"currentRound"`
+	FinalizedHash    string `json:"finalizedHash"`
+	StateRoot        string `json:"stateRoot"`
+	CommitteeSize    int    `json:"committeeSize"`
+	Quorum           int    `json:"quorum"`
+	LockedValidators int    `json:"lockedValidators"`
+	PendingProposal  string `json:"pendingProposal,omitempty"`
+}
