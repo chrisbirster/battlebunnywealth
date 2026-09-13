@@ -66,18 +66,36 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - v0.13 internal security-review rehearsal records unresolved risks without claiming an external audit
 - TEST-CARROT remains non-economic
 
-## v0.14 — Round-change protocol + distributed public-testnet evidence
+## v0.14 — Round-change protocol + distributed-evidence tooling — implemented on feature branch / merge-gated
 
-- replace the single-round research loop with an explicit multi-round timeout/round-change state machine
-- prove safety when honest validators observe proposals/votes in different orders and across prolonged partial partitions
-- persist/recover in-progress round/lock state safely across crashes
-- add proposer censorship and equivocation evidence handling without introducing unsafe automatic slashing
-- run geographically/network-provider-distributed public nodes and record latency, peer diversity, catch-up, and availability evidence
-- feed trusted ASN/provider metadata from a reproducible operator data source and measure false positives/evasion
-- add checkpoint comparison tooling across independent operators and alert on finalized-hash/state-root disagreement
-- add longer randomized chaos/soak scenarios with message loss, duplication, reordering, clock skew, and rolling restarts
-- remediate findings from the v0.13 pre-audit rehearsal and prepare a frozen commit for independent external security review
-- keep TEST-CARROT valueless; economic activation remains blocked
+- fixed committee membership across rounds at a height, with proposer rotation by round
+- validator-signed round-change messages and quorum round certificates
+- persistent value locks prevent a validator from voting for conflicting state transitions later in the same height
+- later-round finalized blocks embed their round certificate for independent replay verification
+- in-progress round/lock/certificate state survives crashes; stale round snapshots lose to durably finalized history
+- peer catch-up now durably persists independently verified imported blocks
+- cryptographically verifiable proposer/vote equivocation evidence without automatic slashing or confiscation
+- deterministic round-chaos harness covers partial locks, reordered/duplicate messages, temporary partitions, proposer timestamp skew, rolling replay, convergence, and fixed-supply conservation
+- canonical hash-pinned CIDR-to-ASN/provider metadata maps support reproducible peer-diversity policy
+- checkpoint comparison tooling detects same-height finalized-hash/state-root disagreement across operators
+- distributed evidence collector records availability, latency, public status, and checkpoints from real endpoints when supplied
+- v0.14 security-review handoff records remediated findings and remaining blockers
+- TEST-CARROT remains non-economic
+
+The repository does **not** claim a real geographically/network-provider-distributed evidence run in v0.14. Tooling and local adversarial evidence are implemented; real independent infrastructure is an operational/external gate.
+
+## v0.15 — Live distributed testnet + independent review freeze
+
+- run independent public nodes across multiple operators/providers/regions where practical
+- retain repository SHA, genesis hash, CARROT policy hash, network-map hash/provenance, node/operator IDs, availability, latency, catch-up events, round changes, and checkpoint samples
+- compare same-height checkpoints continuously and treat finalized-hash/state-root disagreement as a consensus incident
+- exercise node loss, provider loss, rolling restart, peer churn, delayed recovery, and long partial partitions on real Internet paths
+- measure ASN/provider diversity false positives, stale-data behavior, and inexpensive evasion strategies
+- tune timeout/backoff policy from measured latency rather than local assumptions
+- freeze one merged `dev` commit plus live-evidence artifacts for independent consensus/security review
+- remediate independent-review findings before any production-security claim
+- separately complete appropriate legal/tax/privacy/app-store review for economically valuable CARROT
+- keep TEST-CARROT valueless throughout the live evidence/review window
 
 ## v1.0 candidate — Game + network readiness
 
@@ -95,6 +113,7 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - robust committee/finality behavior through validator-set changes, protocol upgrades, and round changes
 - deterministic fixed-supply CARROT accounting
 - reviewed wallet/treasury/governance path
+- completed live distributed-testnet evidence window
 - independent external security review plus legal/tax/privacy/app-store review appropriate for an economically valuable launch
 
 Economic activation happens only after those gates are satisfied, not merely because the code can represent CARROT.
