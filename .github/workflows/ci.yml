@@ -33,8 +33,12 @@ jobs:
       - name: Build web
         working-directory: web
         run: npm run build
-      - name: Test testnet consensus
-        run: go test ./internal/testnet
+      - name: Test testnet genesis and protocol commitment
+        run: go test ./internal/testnet -run '^TestGenesisCommitsCARROTPolicy$'
+      - name: Test testnet voting and fault rejection
+        run: go test ./internal/testnet -run 'Test(FourValidator|TwoOffline|InvalidSignature|HundredFake|DuplicateVote|ProposalRejects)'
+      - name: Test testnet transport and recovery
+        run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress)'
       - name: Gate replicated TEST-CARROT state
         run: go test ./internal/publictestnet
       - name: Test Go
