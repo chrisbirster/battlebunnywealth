@@ -22,21 +22,24 @@ Every height begins at round zero.
 
 A valid round-zero block has no `roundCertificate`. The expected proposer signs the block. Committee members independently validate the block and may sign `commit` votes.
 
-A validator that signs a commit vote records a local value lock:
+New live validator votes sign both the concrete block hash and a consensus `valueHash`. The value hash covers the state transition rather than the proposer-specific envelope. It commits to protocol version, network, height, parent, prior state, resulting state root, and operations. It deliberately excludes proposer ID, timestamp, round number, and round certificate so the same transition may be reproposed by a later proposer.
+
+A validator that signs a commit vote records a local lock containing:
 
 ```text
 validator id
 round
-block value hash
+value hash
+signed vote proof
 ```
 
-The value hash covers the state transition rather than the proposer-specific envelope. It commits to protocol version, network, height, parent, prior state, resulting state root, and operations. It deliberately excludes proposer ID, timestamp, round number, and round certificate so the same transition may be reproposed by a later proposer.
+Legacy finalized testnet history that predates v0.14 can still replay its older vote-signature domain, but new live votes must carry the signed value hash.
 
 ## Timeout and round change
 
 The networking/client layer decides that the current round has timed out. The consensus engine does not trust a local clock timeout as consensus proof.
 
-Each selected validator may sign a `RoundChange`:
+Each selected validator may sign a `RoundChange` containing:
 
 ```text
 network
@@ -46,13 +49,20 @@ to round
 validator id
 highest local locked round
 highest local locked value
+signed vote proof for that lock, if any
 ```
 
-The engine verifies the signature and requires a validator that is already locally locked to disclose that exact lock.
+A lock claim without its validator-signed vote proof is invalid. The proof must match the same network, height, validator, locked round, and value hash, and its vote signature must verify against the validator key.
 
-When a quorum of distinct committee members requests the same next round, the node builds a `RoundCertificate` containing those signed messages.
+A round-change certificate does **not** globally adopt a value merely because one validator reports a lock. For a committee of `N` with quorum `Q`, a value is carried forward only when matching lock proofs reach the quorum-intersection threshold:
 
-The certificate is independently verifiable and records the highest disclosed lock. Conflicting values at the same highest locked round fail closed.
+```text
+max(1, 2Q - N)
+```
+
+This is the minimum number of prior-finality voters guaranteed to appear in any later quorum-sized timeout certificate if that value may already have finalized elsewhere. In the four-phone 3-of-4 bootstrap, two matching lock proofs are therefore required. A single malicious validator can prove that it signed an arbitrary value, but that lone proof cannot dictate the next-round proposal.
+
+When a quorum of distinct committee members requests the same next round, the node builds a `RoundCertificate` containing those signed messages. Among lock groups that meet the intersection threshold, the highest locked round wins. Conflicting qualifying values at the same highest round fail closed.
 
 ## Later-round proposal
 
@@ -60,15 +70,15 @@ A proposal for round `R > 0` must carry the quorum certificate that authorizes r
 
 If the certificate carries a locked value, the new proposer must re-propose that same state transition. A different transaction/operation set is rejected.
 
-If the certificate contains no lock, the new proposer may propose a new valid transition.
+If the certificate contains no qualifying lock, the new proposer may propose a new valid transition. Individual validators remain bound by their own proven local locks and cannot sign a conflicting value.
 
-A block finalized in a later round permanently contains the round certificate, so restart, catch-up, checkpoints, and independent operators can verify why that round was authorized.
+A block finalized in a later round permanently contains the round certificate, including its lock proofs, so restart, catch-up, checkpoints, and independent operators can verify why that round and any carried value were authorized.
 
 ## Validator locks
 
 A validator that has voted for value `A` at a height cannot later vote for value `B` at that height.
 
-The engine persists locks in `round-state.json`. A crash/restart reloads the current round, lock set, and verified round-certificate chain before the validator can continue.
+The engine persists locks and their signed vote proofs in `round-state.json`. A crash/restart verifies those proofs before restoring the current round, lock set, and round-certificate chain.
 
 Finalized history supersedes stale in-progress state. If a crash happens after `blocks.ndjson` is synced but before old round state is removed, restart discards the stale lower-height round snapshot.
 
@@ -92,7 +102,8 @@ A synced node therefore retains imported history after restart instead of relyin
 `pop-round-chaos` deterministically exercises:
 
 - abandoned round-zero proposals;
-- partial value locks;
+- partial value locks with signed lock proofs;
+- quorum-intersection lock selection;
 - quorum round changes;
 - proposer rotation;
 - message reordering;
@@ -116,6 +127,7 @@ This is not a claim that the protocol is production BFT. In particular:
 - there is no formal safety proof;
 - timeout scheduling/adaptive backoff is still an operator/client concern;
 - the lock model is deliberately conservative and may sacrifice liveness rather than unlock ambiguously;
+- quorum-intersection lock proofs reduce the single-validator liveness attack but do not replace a formal multi-phase BFT proof;
 - no automatic slashing exists;
 - adaptive corruption and sophisticated network scheduling remain research threats;
 - the CI chaos harness is deterministic simulation, not evidence from independent Internet operators.
