@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/chrisbirster/battlebunnywealth/internal/carrot"
@@ -13,7 +14,10 @@ import (
 
 const CheckpointVersion = 1
 
-var ErrInvalidCheckpoint = errors.New("invalid public-testnet checkpoint")
+var (
+	ErrInvalidCheckpoint = errors.New("invalid public-testnet checkpoint")
+	ErrCheckpointMismatch = errors.New("public-testnet checkpoint mismatch")
+)
 
 type Checkpoint struct {
 	Version          int    `json:"version"`
@@ -26,6 +30,21 @@ type Checkpoint struct {
 	ValidatorSetHash string `json:"validatorSetHash"`
 	CarrotPolicyHash string `json:"carrotPolicyHash"`
 	Hash             string `json:"hash"`
+}
+
+type CheckpointObservation struct {
+	Source     string     `json:"source"`
+	Checkpoint Checkpoint `json:"checkpoint"`
+}
+
+type CheckpointComparison struct {
+	NetworkID     string   `json:"networkId"`
+	GenesisHash   string   `json:"genesisHash"`
+	Height        uint64   `json:"height"`
+	FinalizedHash string   `json:"finalizedHash"`
+	StateRoot     string   `json:"stateRoot"`
+	Sources       []string `json:"sources"`
+	Match         bool     `json:"match"`
 }
 
 func BuildCheckpoint(engine *testnet.Engine, state *ConsensusState) (Checkpoint, error) {
@@ -52,9 +71,6 @@ func BuildCheckpoint(engine *testnet.Engine, state *ConsensusState) (Checkpoint,
 	return checkpoint, nil
 }
 
-// VerifyCheckpoint independently reconstructs consensus from genesis and the
-// finalized block sequence. The checkpoint is therefore a compact comparison
-// target, not a trusted snapshot that bypasses block/finality verification.
 func VerifyCheckpoint(genesis testnet.Genesis, finalized []testnet.FinalizedBlock, checkpoint Checkpoint) error {
 	if checkpoint.Version != CheckpointVersion || checkpoint.NetworkID != genesis.NetworkID || checkpoint.GenesisHash != genesis.Hash || checkpoint.CarrotPolicyHash != carrot.DefaultPolicy().Hash() || checkpoint.Hash != checkpointHash(checkpoint) {
 		return ErrInvalidCheckpoint
@@ -84,6 +100,36 @@ func VerifyCheckpoint(genesis testnet.Genesis, finalized []testnet.FinalizedBloc
 		return ErrInvalidCheckpoint
 	}
 	return nil
+}
+
+// CompareCheckpointSet is intentionally strict: all operator observations must
+// describe the exact same height and consensus commitment. A caller should poll
+// until operators reach a common height rather than silently comparing unequal
+// heights and treating lag as agreement.
+func CompareCheckpointSet(observations []CheckpointObservation) (CheckpointComparison, error) {
+	if len(observations) < 2 {
+		return CheckpointComparison{}, errors.New("at least two checkpoint observations required")
+	}
+	base := observations[0].Checkpoint
+	if base.Version != CheckpointVersion || base.Hash != checkpointHash(base) {
+		return CheckpointComparison{}, ErrInvalidCheckpoint
+	}
+	comparison := CheckpointComparison{NetworkID: base.NetworkID, GenesisHash: base.GenesisHash, Height: base.Height, FinalizedHash: base.FinalizedHash, StateRoot: base.StateRoot, Match: true}
+	for _, observation := range observations {
+		checkpoint := observation.Checkpoint
+		if observation.Source == "" || checkpoint.Version != CheckpointVersion || checkpoint.Hash != checkpointHash(checkpoint) {
+			return CheckpointComparison{}, ErrInvalidCheckpoint
+		}
+		comparison.Sources = append(comparison.Sources, observation.Source)
+		if checkpoint.NetworkID != base.NetworkID || checkpoint.GenesisHash != base.GenesisHash || checkpoint.Height != base.Height || checkpoint.FinalizedHash != base.FinalizedHash || checkpoint.StateRoot != base.StateRoot || checkpoint.ProtocolVersion != base.ProtocolVersion || checkpoint.ValidatorSetHash != base.ValidatorSetHash || checkpoint.CarrotPolicyHash != base.CarrotPolicyHash {
+			comparison.Match = false
+		}
+	}
+	sort.Strings(comparison.Sources)
+	if !comparison.Match {
+		return comparison, fmt.Errorf("%w at height %d", ErrCheckpointMismatch, base.Height)
+	}
+	return comparison, nil
 }
 
 func hashValidatorSet(validators []testnet.Validator) string {
