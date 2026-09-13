@@ -1,8 +1,8 @@
-# v0.13 testnet operations
+# v0.14 testnet operations
 
-No paid multi-server deployment is required for local development. The deterministic cluster and soak harnesses run independent consensus engines with separate logical state, while `pop-node` is the long-running node binary.
+No paid multi-server deployment is required for local development. The deterministic cluster, transition soak, and round-chaos harnesses run independent consensus engines with separate logical state, while `pop-node` is the long-running node binary.
 
-Genesis remains protocol v3. v0.13 can activate one explicitly supported compatibility step to protocol v4 at a quorum-finalized height. Do not reuse incompatible data directories across different genesis hashes.
+Genesis remains protocol v3. The reviewed compatibility path can activate protocol v4 at a quorum-finalized height. Do not reuse incompatible data directories across different genesis hashes.
 
 ## Local security and reliability gates
 
@@ -14,11 +14,14 @@ go run ./cmd/pop-bootstrap-sim -phones 100 -gate
 go run ./cmd/carrot-spec -check
 go run ./cmd/pop-public-smoke -attackers 100 -gate
 go run ./cmd/pop-soak -blocks 1100 -gate
+go run ./cmd/pop-round-chaos -blocks 240 -seed 42 -gate
 ```
 
-`task testnet:soak` runs the final command.
+`task testnet:soak` runs the transition soak. `task testnet:round-chaos` runs the v0.14 round-change/disorder gate.
 
-The 1,100-block soak crosses the validator-set and protocol-version activation heights, changes valid quorum subsets, periodically isolates/catches up a node, reconstructs/replays nodes from genesis, and checks finalized hash/state-root convergence plus fixed-supply conservation.
+The 1,100-block soak crosses validator-set and protocol-version activation heights, changes valid quorum subsets, periodically isolates/catches up a node, reconstructs/replays nodes from genesis, and checks finalized hash/state-root convergence plus fixed-supply conservation.
+
+The 240-block round-chaos gate adds partial proven locks, quorum round changes, proposer rotation, reordered/duplicate messages, temporary partitions, proposal timestamp skew, and rolling replay/restart.
 
 ## Node key
 
@@ -46,8 +49,9 @@ At startup the node:
 2. constructs deterministic TEST-CARROT/transition consensus state;
 3. replays every local finalized block through the state machine;
 4. reconstructs historical validator-set and protocol-version boundaries;
-5. rejects corrupt, incompatible, or unsupported history;
-6. begins peer catch-up and HTTP service.
+5. re-verifies persisted round certificates and signed lock proofs for the exact next height;
+6. rejects corrupt, incompatible, or unsupported history;
+7. begins peer catch-up and HTTP service.
 
 ## Consensus endpoints
 
@@ -55,12 +59,30 @@ At startup the node:
 - `GET /v1/node/genesis`
 - `GET /v1/node/blocks?from=HEIGHT`
 - `GET /v1/node/metrics`
-- `GET /v1/committee/draft?validator=ID&round=0`
+- `GET /v1/committee/draft?validator=ID&round=R`
+- `GET /v1/committee/round-certificate?round=R`
 - `POST /v1/committee/proposals`
 - `POST /v1/committee/votes`
+- `POST /v1/committee/round-change`
 - signed relay endpoints under `/v1/peer/*`.
 
-Phone clients submit their own signed proposal/vote. A receiving full node verifies the committee signature against the validator set active at that exact height and may relay the same signed object using the node's separate relay identity.
+Phone clients submit their own signed proposal/vote/round-change messages. A receiving full node verifies committee membership and signatures against the validator set active at the exact height and may relay the same signed object using the node's separate relay identity.
+
+## Round change and lock proofs
+
+Committee membership is fixed for a height while the proposer rotates by round.
+
+A new live commit vote signs both the concrete block hash and the proposer-independent consensus value hash. When a validator claims a lock in a `RoundChange`, it must include that signed value-bound vote as proof.
+
+A quorum of round-change messages is required to authorize the next round. A certificate carries a value forward only when matching lock proofs reach:
+
+```text
+max(1, 2Q - N)
+```
+
+for committee size `N` and quorum `Q`. The four-phone 3-of-4 bootstrap therefore requires two matching lock proofs before a value constrains the entire next round. One validator's valid lock proof cannot dictate the next-round proposal, although that validator remains individually forbidden from signing a conflicting value.
+
+Persisted locks include their proofs and are reverified on restart. Later-round finalized blocks embed their round certificate and proofs so catch-up/replay can independently validate the round transition.
 
 ## Public-testnet endpoints
 
@@ -76,8 +98,6 @@ The public wrapper adds:
 - `GET /v1/public/checkpoint`
 - `GET /v1/public/funding-policy`
 - `POST /v1/public/validators/apply` when an admission verifier is configured.
-
-`/v1/public/status` reports active protocol/validator transition state from replicated consensus state.
 
 `POST /v1/public/transactions` is admission only. A transfer becomes authoritative only after it appears in a finalized block and executes through the replicated state machine.
 
@@ -109,7 +129,7 @@ If nodes disagree on the active set, stop and follow [Testnet incident response]
 
 ## Protocol-upgrade transition and recovery
 
-A `protocol-upgrade-commitment` needs at least 1,008 blocks of notice. v0.13 supports one controlled compatibility transition from protocol v3 to v4.
+A `protocol-upgrade-commitment` needs at least 1,008 blocks of notice. The reviewed compatibility path supports the controlled transition from protocol v3 to v4.
 
 The activation procedure is:
 
@@ -122,7 +142,7 @@ The activation procedure is:
 
 There is no admin rollback that rewrites finalized history. If the supported upgrade fails after finality, halt and use the incident runbook rather than inventing a local fork.
 
-## Snapshots and checkpoints
+## Snapshots, checkpoints, and independent operators
 
 Fetch the current observability snapshot:
 
@@ -136,9 +156,23 @@ Fetch the compact checkpoint:
 curl http://127.0.0.1:9101/v1/public/checkpoint
 ```
 
-The checkpoint commits to genesis/network, finalized height/hash, state root, protocol version, validator-set hash, and CARROT policy hash. It is **not** trusted state. `VerifyCheckpoint` independently replays finalized blocks through that height before accepting it.
+The checkpoint commits to genesis/network, finalized height/hash, state root, protocol version, validator-set hash, and CARROT policy hash. It is **not** trusted state.
 
-For incident evidence, capture checkpoints from multiple independently operated nodes and compare them before changing software or node data.
+Compare two independent operators:
+
+```bash
+go run ./cmd/pop-checkpoint-compare -url https://NODE_A -url https://NODE_B
+```
+
+Collect availability/latency/status/checkpoint evidence:
+
+```bash
+go run ./cmd/pop-network-evidence -url https://NODE_A -url https://NODE_B -gate
+```
+
+Same-height finalized-hash or state-root disagreement is a consensus incident. Preserve evidence before changing software or node data.
+
+The repository provides these tools in v0.14 but does not claim that a real multi-provider/geographic evidence run has already occurred. That operational evidence window is v0.15 work.
 
 ## Public test funding
 
@@ -150,9 +184,9 @@ There is no automatic faucet, public mint, or treasury-spending endpoint. Operat
 
 Public discovery applies total, per-host, IPv4 `/24`, and IPv6 `/48` limits.
 
-v0.13 also provides a server-side ASN/provider classifier boundary. Operators may connect a trusted local classification data source and configure ASN/provider caps. Never accept peer-self-declared ASN/provider labels as security evidence.
+The server-side ASN/provider classifier can consume a canonical, hash-pinned CIDR metadata map. Record the map hash and provenance with distributed-testnet evidence so another operator can reproduce the classification input. Never accept peer-self-declared ASN/provider labels as trusted security evidence.
 
-The classifier is research hardening, not proof of independent operators or geographic decentralization.
+These controls are research hardening, not proof of independent humans, independent operators, or geographic decentralization.
 
 ## Apple App Attest
 
@@ -190,4 +224,4 @@ The default recovery rule is to preserve finalized history and reconstruct/verif
 
 Public discovery and transaction endpoints are adversarial-test surfaces, not a production DDoS guarantee. Request-size limits, concurrency limits, signed relay envelopes, replay protection, network-ID checks, validator signatures, IP-prefix diversity and optional trusted ASN/provider classification are layered defenses.
 
-TEST-CARROT remains valueless. Do not advertise the v0.13 network as a production cryptocurrency or financial network.
+TEST-CARROT remains valueless. Do not advertise the v0.14 network as a production cryptocurrency or financial network.

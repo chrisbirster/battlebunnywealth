@@ -107,8 +107,15 @@ func VerifySignature(algorithm, publicKey, message, signature string) bool {
 func proposalSigningMessage(blockHash string) string {
 	return "bbw-pop-proposal/v1\nblock=" + blockHash
 }
+
 func voteSigningMessage(v Vote) string {
-	return fmt.Sprintf("bbw-pop-vote/v1\nnetwork=%s\nheight=%d\nround=%d\nblock=%s\ndecision=%s", v.NetworkID, v.Height, v.Round, v.BlockHash, v.Decision)
+	// Empty ValueHash is retained only so finalized pre-v0.14 testnet history
+	// can still be replayed. New live votes always use the v2 domain and bind
+	// the consensus value hash as well as the concrete block hash.
+	if v.ValueHash == "" {
+		return fmt.Sprintf("bbw-pop-vote/v1\nnetwork=%s\nheight=%d\nround=%d\nblock=%s\ndecision=%s", v.NetworkID, v.Height, v.Round, v.BlockHash, v.Decision)
+	}
+	return fmt.Sprintf("bbw-pop-vote/v2\nnetwork=%s\nheight=%d\nround=%d\nblock=%s\nvalue=%s\ndecision=%s", v.NetworkID, v.Height, v.Round, v.BlockHash, v.ValueHash, v.Decision)
 }
 
 // NodeKey is distinct from player/device validator keys. Running more nodes never creates more consensus votes.

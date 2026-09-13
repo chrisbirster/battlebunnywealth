@@ -1,6 +1,7 @@
 package publictestnet
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,6 +29,28 @@ func TestCheckpointVerifiesByIndependentReplay(t *testing.T) {
 	tampered.StateRoot = "deadbeef"
 	if err := VerifyCheckpoint(f.genesis, f.engines[0].Finalized(), tampered); err == nil {
 		t.Fatal("tampered checkpoint verified")
+	}
+}
+
+func TestCheckpointComparisonDetectsDivergence(t *testing.T) {
+	f := newExecutionFixture(t, 1)
+	b1, _ := f.finalize(t, nil)
+	f.finalize(t, []testnet.Operation{settlement(t, b1)})
+	checkpoint, err := BuildCheckpoint(f.engines[0], f.states[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	comparison, err := CompareCheckpointSet([]CheckpointObservation{{Source: "operator-a", Checkpoint: checkpoint}, {Source: "operator-b", Checkpoint: checkpoint}})
+	if err != nil || !comparison.Match {
+		t.Fatalf("comparison=%+v err=%v", comparison, err)
+	}
+
+	diverged := checkpoint
+	diverged.StateRoot = "different"
+	diverged.Hash = checkpointHash(diverged)
+	comparison, err = CompareCheckpointSet([]CheckpointObservation{{Source: "operator-a", Checkpoint: checkpoint}, {Source: "operator-b", Checkpoint: diverged}})
+	if !errors.Is(err, ErrCheckpointMismatch) || comparison.Match {
+		t.Fatalf("divergence comparison=%+v err=%v", comparison, err)
 	}
 }
 

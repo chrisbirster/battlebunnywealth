@@ -71,44 +71,134 @@ type Genesis struct {
 }
 
 func NewGenesis(networkID string, createdAt time.Time, cfg ProtocolConfig, validators []Validator) (Genesis, error) {
-	if networkID == "" { return Genesis{}, errors.New("network id required") }
-	if len(validators) == 0 { return Genesis{}, errors.New("at least one genesis validator required") }
+	if networkID == "" {
+		return Genesis{}, errors.New("network id required")
+	}
+	if len(validators) == 0 {
+		return Genesis{}, errors.New("at least one genesis validator required")
+	}
 	normalized := append([]Validator(nil), validators...)
 	sort.Slice(normalized, func(i, j int) bool { return normalized[i].ID < normalized[j].ID })
 	seen := map[string]struct{}{}
 	for i := range normalized {
 		v := &normalized[i]
-		if v.ID == "" || v.PublicKey == "" { return Genesis{}, errors.New("validator id and public key required") }
-		if _, ok := seen[v.ID]; ok { return Genesis{}, fmt.Errorf("duplicate validator %q", v.ID) }
+		if v.ID == "" || v.PublicKey == "" {
+			return Genesis{}, errors.New("validator id and public key required")
+		}
+		if _, ok := seen[v.ID]; ok {
+			return Genesis{}, fmt.Errorf("duplicate validator %q", v.ID)
+		}
 		seen[v.ID] = struct{}{}
-		v.Genesis = true; v.Active = true
-		if v.ActivatedAt.IsZero() { v.ActivatedAt = createdAt.UTC() }
-		if v.Authority <= 0 { v.Authority = 1 }
+		v.Genesis = true
+		v.Active = true
+		if v.ActivatedAt.IsZero() {
+			v.ActivatedAt = createdAt.UTC()
+		}
+		if v.Authority <= 0 {
+			v.Authority = 1
+		}
 	}
 	policy := carrot.DefaultPolicy()
-	if err := policy.Validate(); err != nil { return Genesis{}, fmt.Errorf("invalid CARROT policy: %w", err) }
+	if err := policy.Validate(); err != nil {
+		return Genesis{}, fmt.Errorf("invalid CARROT policy: %w", err)
+	}
 	g := Genesis{Version: ProtocolVersion, NetworkID: networkID, CreatedAt: createdAt.UTC(), Config: cfg, Validators: normalized, CarrotPolicyHash: policy.Hash()}
 	g.Hash = hashGenesis(g)
 	return g, nil
 }
 
 func (g Genesis) Validate() error {
-	if g.Version != ProtocolVersion { return fmt.Errorf("unsupported protocol version %d", g.Version) }
-	if g.NetworkID == "" || g.Hash == "" { return errors.New("incomplete genesis") }
+	if g.Version != ProtocolVersion {
+		return fmt.Errorf("unsupported protocol version %d", g.Version)
+	}
+	if g.NetworkID == "" || g.Hash == "" {
+		return errors.New("incomplete genesis")
+	}
 	policy := carrot.DefaultPolicy()
-	if err := policy.Validate(); err != nil { return fmt.Errorf("invalid local CARROT policy: %w", err) }
-	if g.CarrotPolicyHash == "" || g.CarrotPolicyHash != policy.Hash() { return errors.New("CARROT policy hash mismatch") }
-	if hashGenesis(g) != g.Hash { return errors.New("genesis hash mismatch") }
-	if len(g.Validators) == 0 { return errors.New("empty validator set") }
+	if err := policy.Validate(); err != nil {
+		return fmt.Errorf("invalid local CARROT policy: %w", err)
+	}
+	if g.CarrotPolicyHash == "" || g.CarrotPolicyHash != policy.Hash() {
+		return errors.New("CARROT policy hash mismatch")
+	}
+	if hashGenesis(g) != g.Hash {
+		return errors.New("genesis hash mismatch")
+	}
+	if len(g.Validators) == 0 {
+		return errors.New("empty validator set")
+	}
 	return nil
 }
 
-func hashGenesis(g Genesis) string { g.Hash = ""; raw, _ := json.Marshal(g); sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
+func hashGenesis(g Genesis) string {
+	g.Hash = ""
+	raw, _ := json.Marshal(g)
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
 
-type Operation struct { Type string `json:"type"`; Key string `json:"key,omitempty"`; Value string `json:"value,omitempty"` }
-type Block struct { Version int `json:"version"`; NetworkID string `json:"networkId"`; Height uint64 `json:"height"`; Round uint32 `json:"round"`; PreviousHash string `json:"previousHash"`; PreviousState string `json:"previousState"`; StateRoot string `json:"stateRoot"`; CommitteeHash string `json:"committeeHash"`; ProposerID string `json:"proposerId"`; TimestampUnix int64 `json:"timestampUnix"`; Operations []Operation `json:"operations"`; Hash string `json:"hash"` }
-type Proposal struct { Block Block `json:"block"`; Signature string `json:"signature"` }
-type Vote struct { NetworkID string `json:"networkId"`; Height uint64 `json:"height"`; Round uint32 `json:"round"`; BlockHash string `json:"blockHash"`; ValidatorID string `json:"validatorId"`; Decision string `json:"decision"`; Signature string `json:"signature"` }
-type FinalityCertificate struct { Height uint64 `json:"height"`; Round uint32 `json:"round"`; BlockHash string `json:"blockHash"`; CommitteeHash string `json:"committeeHash"`; Quorum int `json:"quorum"`; Votes []Vote `json:"votes"` }
-type FinalizedBlock struct { Block Block `json:"block"`; ProposalSignature string `json:"proposalSignature"`; Certificate FinalityCertificate `json:"certificate"` }
-type Status struct { NetworkID string `json:"networkId"`; GenesisHash string `json:"genesisHash"`; Height uint64 `json:"height"`; FinalizedHash string `json:"finalizedHash"`; StateRoot string `json:"stateRoot"`; CommitteeSize int `json:"committeeSize"`; Quorum int `json:"quorum"`; PendingProposal string `json:"pendingProposal,omitempty"` }
+type Operation struct {
+	Type  string `json:"type"`
+	Key   string `json:"key,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+type Block struct {
+	Version          int               `json:"version"`
+	NetworkID        string            `json:"networkId"`
+	Height           uint64            `json:"height"`
+	Round            uint32            `json:"round"`
+	PreviousHash     string            `json:"previousHash"`
+	PreviousState    string            `json:"previousState"`
+	StateRoot        string            `json:"stateRoot"`
+	CommitteeHash    string            `json:"committeeHash"`
+	ProposerID       string            `json:"proposerId"`
+	TimestampUnix    int64             `json:"timestampUnix"`
+	RoundCertificate *RoundCertificate `json:"roundCertificate,omitempty"`
+	Operations       []Operation       `json:"operations"`
+	Hash             string            `json:"hash"`
+}
+
+type Proposal struct {
+	Block     Block  `json:"block"`
+	Signature string `json:"signature"`
+}
+
+type Vote struct {
+	NetworkID   string `json:"networkId"`
+	Height      uint64 `json:"height"`
+	Round       uint32 `json:"round"`
+	BlockHash   string `json:"blockHash"`
+	ValueHash   string `json:"valueHash,omitempty"`
+	ValidatorID string `json:"validatorId"`
+	Decision    string `json:"decision"`
+	Signature   string `json:"signature"`
+}
+
+type FinalityCertificate struct {
+	Height        uint64 `json:"height"`
+	Round         uint32 `json:"round"`
+	BlockHash     string `json:"blockHash"`
+	CommitteeHash string `json:"committeeHash"`
+	Quorum        int    `json:"quorum"`
+	Votes         []Vote `json:"votes"`
+}
+
+type FinalizedBlock struct {
+	Block             Block               `json:"block"`
+	ProposalSignature string              `json:"proposalSignature"`
+	Certificate       FinalityCertificate `json:"certificate"`
+}
+
+type Status struct {
+	NetworkID        string `json:"networkId"`
+	GenesisHash      string `json:"genesisHash"`
+	Height           uint64 `json:"height"`
+	CurrentRound     uint32 `json:"currentRound"`
+	FinalizedHash    string `json:"finalizedHash"`
+	StateRoot        string `json:"stateRoot"`
+	CommitteeSize    int    `json:"committeeSize"`
+	Quorum           int    `json:"quorum"`
+	LockedValidators int    `json:"lockedValidators"`
+	PendingProposal  string `json:"pendingProposal,omitempty"`
+}
