@@ -228,7 +228,6 @@ func TestSmokeCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
 func TestDuplicateVoteRejected(t *testing.T) {
 	f := makeFixture(t)
 	e, _ := NewEngine(f.genesis)
@@ -244,7 +243,6 @@ func TestDuplicateVoteRejected(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
-
 func TestProposalRejectsWrongNetworkAndPreviousHash(t *testing.T) {
 	f := makeFixture(t)
 	e, _ := NewEngine(f.genesis)
@@ -262,7 +260,6 @@ func TestProposalRejectsWrongNetworkAndPreviousHash(t *testing.T) {
 		t.Fatalf("previous err=%v", err)
 	}
 }
-
 func TestStoreRestartAndPeerCatchup(t *testing.T) {
 	f := makeFixture(t)
 	e, _ := NewEngine(f.genesis)
@@ -291,7 +288,6 @@ func TestStoreRestartAndPeerCatchup(t *testing.T) {
 	if restarted.Status().FinalizedHash != e.Status().FinalizedHash {
 		t.Fatal("restart did not recover finalized head")
 	}
-
 	server := httptest.NewServer(NewHTTPNode(e, nil, nil))
 	defer server.Close()
 	stale, _ := NewEngine(f.genesis)
@@ -302,7 +298,6 @@ func TestStoreRestartAndPeerCatchup(t *testing.T) {
 		t.Fatal("stale peer did not catch up")
 	}
 }
-
 func TestDirectIngressRelaysToPermissionedPeer(t *testing.T) {
 	f := makeFixture(t)
 	engineA, _ := NewEngine(f.genesis)
@@ -324,7 +319,6 @@ func TestDirectIngressRelaysToPermissionedPeer(t *testing.T) {
 	nodeA.Relayer = &Relayer{NetworkID: f.genesis.NetworkID, Key: keyA, Peers: []Peer{{NodeID: keyB.ID(), PublicKey: keyB.PublicText(), URL: serverB.URL}}, Client: serverB.Client()}
 	serverA := httptest.NewServer(nodeA)
 	defer serverA.Close()
-
 	b, p := f.proposal(t, engineA, 0)
 	raw, _ := json.Marshal(p)
 	req, _ := http.NewRequest(http.MethodPost, serverA.URL+"/v1/committee/proposals", bytes.NewReader(raw))

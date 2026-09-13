@@ -13,20 +13,35 @@ func TestGenesisCommitsCARROTPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := NewGenesis("carrot-testnet", time.Unix(1_800_000_000, 0).UTC(), DefaultProtocolConfig(), []Validator{{ID: "validator-1", Algorithm: AlgorithmEd25519, PublicKey: pub, Authority: 1000}})
+
+	genesis, err := NewGenesis(
+		"carrot-testnet",
+		time.Unix(1_800_000_000, 0).UTC(),
+		DefaultProtocolConfig(),
+		[]Validator{{
+			ID:        "validator-1",
+			Algorithm: AlgorithmEd25519,
+			PublicKey: pub,
+			Authority: 1000,
+		}},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if g.Version != 2 {
-		t.Fatalf("version=%d", g.Version)
+	if genesis.Version != ProtocolVersion {
+		t.Fatalf("version=%d protocol=%d", genesis.Version, ProtocolVersion)
 	}
-	if g.CarrotPolicyHash != carrot.DefaultPolicy().Hash() {
-		t.Fatalf("policy hash=%s", g.CarrotPolicyHash)
+	if ProtocolVersion != 3 {
+		t.Fatalf("v0.12 requires protocol v3; got %d", ProtocolVersion)
 	}
-	mutated := g
+	if genesis.CarrotPolicyHash != carrot.DefaultPolicy().Hash() {
+		t.Fatalf("policy hash=%s", genesis.CarrotPolicyHash)
+	}
+
+	mutated := genesis
 	mutated.CarrotPolicyHash = strings.Repeat("0", 64)
 	mutated.Hash = hashGenesis(mutated)
 	if err := mutated.Validate(); err == nil || !strings.Contains(err.Error(), "CARROT policy") {
-		t.Fatalf("err=%v", err)
+		t.Fatalf("expected CARROT policy mismatch, got %v", err)
 	}
 }
