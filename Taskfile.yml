@@ -97,11 +97,11 @@ tasks:
       vars: [OPERATORS, REPO_SHA]
 
   review:freeze:
-    desc: Freeze one validated live-evidence artifact against an exact merged dev SHA
+    desc: Freeze validated live evidence against an exact merged dev SHA and deployed image digest
     cmds:
-      - go run ./cmd/pop-review-freeze -repo-sha "{{.REPO_SHA}}" -evidence "{{.EVIDENCE}}" -out review-freeze.json
+      - go run ./cmd/pop-review-freeze -repo-sha "{{.REPO_SHA}}" -image-digest "{{.IMAGE_DIGEST}}" -evidence "{{.EVIDENCE}}" -out review-freeze.json
     requires:
-      vars: [REPO_SHA, EVIDENCE]
+      vars: [REPO_SHA, IMAGE_DIGEST, EVIDENCE]
 
   build:web:
     desc: Build the Solid SPA into web/dist
