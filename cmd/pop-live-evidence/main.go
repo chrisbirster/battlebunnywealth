@@ -25,7 +25,7 @@ func main() {
 	gate := flag.Bool("gate", false, "exit non-zero when review-readiness policy is not met")
 	minProviders := flag.Int("min-providers", 2, "minimum distinct declared providers when gating")
 	minRegions := flag.Int("min-regions", 1, "minimum distinct declared regions when gating")
-	minSamples := flag.Int("min-samples-per-operator", 1, "minimum samples per operator when gating")
+	minSamples := flag.Int("min-samples-per-operator", 1, "minimum available samples per operator when gating")
 	minWindow := flag.Duration("min-window", 0, "minimum evidence duration when gating")
 	flag.Parse()
 	if *operatorsPath == "" || strings.TrimSpace(*repositorySHA) == "" { fatal(errors.New("-operators and -repo-sha are required")) }
@@ -48,6 +48,14 @@ func main() {
 	if window.NetworkID == "" { fatal(errors.New("no operator returned a checkpoint; evidence commitments cannot be established")) }
 	if err := window.Finalize(); err != nil { fatal(err) }
 	readiness := window.EvaluateReadiness(publictestnet.EvidenceReadinessPolicy{MinOperators:len(operators),MinProviders:*minProviders,MinRegions:*minRegions,MinSamplesPerOperator:*minSamples,MinWindow:*minWindow})
+	available := map[string]int{}
+	for _, sample := range window.Samples { if sample.Available { available[sample.OperatorID]++ } }
+	for _, operator := range operators {
+		if available[operator.ID] < *minSamples {
+			readiness.Ready = false
+			readiness.Reasons = append(readiness.Reasons, fmt.Sprintf("availableSamples[%s]=%d want>=%d", operator.ID, available[operator.ID], *minSamples))
+		}
+	}
 	payload := struct { Evidence publictestnet.LiveEvidenceWindow `json:"evidence"`; Readiness publictestnet.EvidenceReadiness `json:"readiness"` }{window,readiness}
 	raw, err := json.MarshalIndent(payload,"","  "); if err != nil { fatal(err) }
 	if *outPath == "" { fmt.Println(string(raw)) } else if err := os.WriteFile(*outPath, append(raw,'\n'), 0o600); err != nil { fatal(err) }
