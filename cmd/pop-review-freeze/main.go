@@ -36,8 +36,8 @@ func main() {
 	flag.Var(&files, "evidence", "live evidence JSON file; repeat for every retained evidence window")
 	flag.Var(&imageDigests, "image-digest", "deployed immutable container image digest (sha256:...); repeat when operators used more than one identical-code image build")
 	flag.Parse()
-	if strings.TrimSpace(*repositorySHA) == "" || len(files) == 0 {
-		fatal(fmt.Errorf("-repo-sha and at least one -evidence are required"))
+	if strings.TrimSpace(*repositorySHA) == "" || len(files) == 0 || len(imageDigests) == 0 {
+		fatal(fmt.Errorf("-repo-sha, at least one -image-digest, and at least one -evidence are required"))
 	}
 	artifacts := make([]publictestnet.NamedEvidenceWindow, 0, len(files))
 	for _, path := range files {
