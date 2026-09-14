@@ -1,0 +1,80 @@
+name: Live Testnet Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      operators_json:
+        description: JSON array of operator descriptors (id,url,provider,region,asn)
+        required: true
+        type: string
+      samples:
+        description: Number of sampling cycles
+        required: true
+        default: '12'
+        type: string
+      interval:
+        description: Go duration between cycles (for example 5m)
+        required: true
+        default: '5m'
+        type: string
+      min_providers:
+        description: Minimum declared provider count for the gate
+        required: true
+        default: '2'
+        type: string
+      min_regions:
+        description: Minimum declared region count for the gate
+        required: true
+        default: '2'
+        type: string
+      min_window:
+        description: Minimum evidence window as a Go duration
+        required: true
+        default: '30m'
+        type: string
+      network_map_hash:
+        description: Optional canonical CIDR/network-map hash used by operators
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - name: Write operator inventory
+        env:
+          OPERATORS_JSON: ${{ inputs.operators_json }}
+        run: printf '%s\n' "$OPERATORS_JSON" > operators.json
+      - name: Collect live evidence
+        run: |
+          go run ./cmd/pop-live-evidence \
+            -operators operators.json \
+            -repo-sha "$GITHUB_SHA" \
+            -network-map-hash '${{ inputs.network_map_hash }}' \
+            -samples '${{ inputs.samples }}' \
+            -interval '${{ inputs.interval }}' \
+            -min-providers '${{ inputs.min_providers }}' \
+            -min-regions '${{ inputs.min_regions }}' \
+            -min-samples-per-operator '${{ inputs.samples }}' \
+            -min-window '${{ inputs.min_window }}' \
+            -gate \
+            -out live-evidence.json
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-testnet-evidence-${{ github.sha }}
+          path: |
+            live-evidence.json
+            operators.json
+          if-no-files-found: error
+          retention-days: 90

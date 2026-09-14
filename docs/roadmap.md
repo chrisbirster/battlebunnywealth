@@ -75,7 +75,7 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - persistent value locks prevent a validator from voting for conflicting state transitions later in the same height
 - later-round finalized blocks embed their round certificate and lock proofs for independent replay verification
 - in-progress round/lock/certificate state survives crashes; stale round snapshots lose to durably finalized history
-- peer catch-up now durably persists independently verified imported blocks
+- peer catch-up durably persists independently verified imported blocks
 - cryptographically verifiable proposer/vote equivocation evidence without automatic slashing or confiscation
 - deterministic round-chaos harness covers partial locks, reordered/duplicate messages, temporary partitions, proposer timestamp skew, rolling replay, convergence, and fixed-supply conservation
 - canonical hash-pinned CIDR-to-ASN/provider metadata maps support reproducible peer-diversity policy
@@ -84,20 +84,30 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - v0.14 security-review handoff records remediated findings and remaining blockers
 - TEST-CARROT remains non-economic
 
-The repository does **not** claim a real geographically/network-provider-distributed evidence run in v0.14. Tooling and local adversarial evidence are implemented; real independent infrastructure is an operational/external gate.
+## v0.15 — Live distributed testnet + independent review freeze — repository side in progress
 
-## v0.15 — Live distributed testnet + independent review freeze
+Repository-side work:
 
-- run independent public nodes across multiple operators/providers/regions where practical
-- retain repository SHA, genesis hash, CARROT policy hash, network-map hash/provenance, node/operator IDs, availability, latency, catch-up events, round changes, and checkpoint samples
-- compare same-height checkpoints continuously and treat finalized-hash/state-root disagreement as a consensus incident
-- exercise node loss, provider loss, rolling restart, peer churn, delayed recovery, and long partial partitions on real Internet paths
-- measure ASN/provider diversity false positives, stale-data behavior, and inexpensive evasion strategies
-- tune timeout/backoff policy from measured latency rather than local assumptions
-- freeze one merged `dev` commit plus live-evidence artifacts for independent consensus/security review
-- remediate independent-review findings before any production-security claim
-- separately complete appropriate legal/tax/privacy/app-store review for economically valuable CARROT
-- keep TEST-CARROT valueless throughout the live evidence/review window
+- dedicated provider-neutral `pop-node` container image with persistent `/data` and configuration mounts
+- versioned live-evidence artifact bound to exact repository SHA, genesis, CARROT policy, optional network-map hash, operator inventory, timestamps, samples, and deterministic artifact hash
+- repeated status/checkpoint sampler with availability/latency measurements
+- same-height finalized-hash/state-root disagreements are retained as explicit incidents rather than discarded
+- review-readiness gate can require operator/provider/region/sample/window coverage without claiming those metadata labels are cryptographic truth
+- manual GitHub Actions evidence workflow binds collection to `GITHUB_SHA` and retains the artifact
+- review-freeze manifest hashes every evidence file and rejects mixed repository/network/genesis/CARROT-policy targets
+- provider-neutral deployment/operator runbook and independent-review package documentation
+
+Operational work still required before v0.15 is complete:
+
+- run independent public nodes across multiple real provider/network paths where practical
+- retain image digests and independently corroborate provider/region/ASN metadata
+- exercise node loss, provider loss, rolling restart, peer churn, delayed recovery, and bounded partial partitions on owned/authorized infrastructure
+- retain latency/availability/checkpoint/catch-up/round-change evidence and resolve any consensus disagreement
+- tune timeout/backoff policy from real measured latency if needed; any executable change requires a new frozen SHA/evidence window
+- generate the final review-freeze manifest over the exact merged `dev` SHA and evidence artifacts
+- hand that package to an independent consensus/security reviewer and remediate findings before any production-security claim
+- separately complete appropriate legal/tax/privacy/app-store review before economically valuable CARROT
+- keep TEST-CARROT valueless throughout the evidence/review window
 
 ## v1.0 candidate — Game + network readiness
 
