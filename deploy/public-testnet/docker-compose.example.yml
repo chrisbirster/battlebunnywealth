@@ -1,0 +1,24 @@
+services:
+  pop-node:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.pop-node
+    restart: unless-stopped
+    ports:
+      - "9101:9101"
+    volumes:
+      - ./node.json:/config/node.json:ro
+      - ./network-map.json:/config/network-map.json:ro
+      - pop-data:/data
+    command:
+      - -config
+      - /config/node.json
+      - -data
+      - /data
+      - -key
+      - /data/node.key
+      - -network-map
+      - /config/network-map.json
+
+volumes:
+  pop-data: {}

@@ -45,6 +45,8 @@ jobs:
         run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress|SyncFromWithStore|StoreIgnoresStale)'
       - name: Gate replicated TEST-CARROT and transition state
         run: go test ./internal/publictestnet
+      - name: Gate live evidence and review-freeze invariants
+        run: go test ./internal/publictestnet -run 'Test(LiveEvidence|BuildReviewFreeze|ReviewFreeze)'
       - name: Test Go
         run: go test ./...
       - name: Smoke Proof-of-Play simulator
@@ -87,3 +89,9 @@ jobs:
         run: go build ./cmd/pop-checkpoint-compare
       - name: Build distributed evidence collector
         run: go build ./cmd/pop-network-evidence
+      - name: Build live evidence collector
+        run: go build ./cmd/pop-live-evidence
+      - name: Build review-freeze tool
+        run: go build ./cmd/pop-review-freeze
+      - name: Build public-testnet node image
+        run: docker build -f Dockerfile.pop-node -t battlebunnywealth-pop-node:ci .

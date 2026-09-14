@@ -83,11 +83,25 @@ tasks:
       vars: [URL1, URL2]
 
   testnet:evidence:
-    desc: Collect availability, latency, status, and checkpoint evidence from two operators
+    desc: Collect a one-shot availability/checkpoint report from two operators
     cmds:
       - go run ./cmd/pop-network-evidence -url "{{.URL1}}" -url "{{.URL2}}" -gate
     requires:
       vars: [URL1, URL2]
+
+  testnet:live-evidence:
+    desc: Collect a retained 12-sample live evidence window from an operator inventory
+    cmds:
+      - go run ./cmd/pop-live-evidence -operators "{{.OPERATORS}}" -repo-sha "{{.REPO_SHA}}" -samples 12 -interval 5m -min-providers 2 -min-regions 2 -min-samples-per-operator 12 -min-window 30m -gate -out live-evidence.json
+    requires:
+      vars: [OPERATORS, REPO_SHA]
+
+  review:freeze:
+    desc: Freeze validated live evidence against an exact merged dev SHA and deployed image digest
+    cmds:
+      - go run ./cmd/pop-review-freeze -repo-sha "{{.REPO_SHA}}" -image-digest "{{.IMAGE_DIGEST}}" -evidence "{{.EVIDENCE}}" -out review-freeze.json
+    requires:
+      vars: [REPO_SHA, IMAGE_DIGEST, EVIDENCE]
 
   build:web:
     desc: Build the Solid SPA into web/dist
@@ -111,6 +125,8 @@ tasks:
       - go build -o ./pop-round-chaos ./cmd/pop-round-chaos
       - go build -o ./pop-checkpoint-compare ./cmd/pop-checkpoint-compare
       - go build -o ./pop-network-evidence ./cmd/pop-network-evidence
+      - go build -o ./pop-live-evidence ./cmd/pop-live-evidence
+      - go build -o ./pop-review-freeze ./cmd/pop-review-freeze
 
   test:
     desc: Run frontend typechecking and Go tests
@@ -144,3 +160,5 @@ tasks:
       - go build ./cmd/pop-round-chaos
       - go build ./cmd/pop-checkpoint-compare
       - go build ./cmd/pop-network-evidence
+      - go build ./cmd/pop-live-evidence
+      - go build ./cmd/pop-review-freeze

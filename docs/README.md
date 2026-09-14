@@ -19,6 +19,8 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 - [Testnet consensus](testnet-consensus.md) — deterministic state execution, historical validator sets, protocol activation, signed lock proofs, round change, finality settlement, persistence, and recovery.
 - [Round-change protocol](round-change-protocol.md) — v0.14 proposer rotation, timeout certificates, value-bound votes, quorum-intersection lock proofs, and crash-safe round recovery.
 - [Distributed testnet evidence](distributed-testnet-evidence.md) — checkpoint comparison, latency/availability collection, pinned network metadata, and the live-operator evidence gate.
+- [v0.15 live distributed testnet](live-testnet-v0.15.md) — evidence artifact, operator inventory, manual collector, failure exercises, and completion criteria.
+- [v0.15 review freeze](review-freeze-v0.15.md) — exact-SHA evidence manifest and independent-review handoff boundary.
 - [v0.12 public testnet](public-testnet-v0.12.md) — consensus TEST-CARROT execution, peer diversity, transition commitments, and public funding policy.
 - [v0.12 security-review package](security-review-v0.12.md) — external-review scope, invariants, adversarial checklist, commands, known limitations, and production release blockers.
 - [v0.13 security-review rehearsal](security-review-v0.13-rehearsal.md) — internal pre-audit exercise, findings, known limitations, and external-review handoff notes.
@@ -49,7 +51,7 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 8. CARROT missions do not directly pay tokens; committee finality is the modeled Proof-of-Play issuance event.
 9. Proof of Play remains a research protocol until its Sybil resistance and finality survive public adversarial testing.
 10. Account login, portable/social identity, device identity, platform attestation, and Proof-of-Play authority are separate security concepts; none automatically proves unique humanity.
-11. v0.14 still executes **TEST-CARROT only**. It does not activate economically valuable CARROT, token sales, exchange integration, automatic treasury spending, or production consensus.
+11. v0.15 still executes **TEST-CARROT only**. It does not activate economically valuable CARROT, token sales, exchange integration, automatic treasury spending, or production consensus.
 12. A finalized validator-set commitment changes voting power only at its committed activation height; historical blocks continue to verify against the validator set that was active when they finalized.
 13. A finalized protocol-upgrade commitment cannot load arbitrary code. Nodes must explicitly support the scheduled version or fail closed.
 14. Public snapshots/checkpoints are verification aids, not trusted substitutes for finality verification or genesis replay.
@@ -58,3 +60,4 @@ Start with [Product decisions](product-decisions.md) for the compact list of wha
 17. Validators remain individually bound by their proven locks and may not vote for a conflicting value at the same height.
 18. Equivocation evidence is cryptographically verifiable but does not automatically slash, confiscate, ban, or remove a validator.
 19. Local chaos testing and evidence tooling do not count as real multi-provider/geographic public-testnet evidence.
+20. A v0.15 review freeze is tied to an exact executable SHA and evidence hashes; changing executable consensus behavior requires a new review target and, when behavior can change live-network results, a new evidence window.

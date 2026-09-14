@@ -1,0 +1,15 @@
+FROM golang:1.27-alpine AS build
+WORKDIR /src
+COPY go.mod ./
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/pop-node ./cmd/pop-node
+
+FROM alpine:3.22
+RUN adduser -D -H -u 10001 pop && mkdir -p /data /config && chown -R pop:pop /data /config
+USER pop
+COPY --from=build /out/pop-node /usr/local/bin/pop-node
+VOLUME ["/data", "/config"]
+EXPOSE 9101
+ENTRYPOINT ["/usr/local/bin/pop-node"]
+CMD ["-config", "/config/node.json", "-data", "/data", "-key", "/data/node.key"]
