@@ -24,7 +24,7 @@ type EvidenceArtifactDigest struct {
 type ReviewFreezeManifest struct {
 	Version          int                      `json:"version"`
 	RepositorySHA    string                   `json:"repositorySha"`
-	ImageDigests     []string                 `json:"imageDigests,omitempty"`
+	ImageDigests     []string                 `json:"imageDigests"`
 	NetworkID        string                   `json:"networkId"`
 	GenesisHash      string                   `json:"genesisHash"`
 	CarrotPolicyHash string                   `json:"carrotPolicyHash"`
@@ -55,6 +55,9 @@ func BuildReviewFreeze(repositorySHA string, artifacts []NamedEvidenceWindow, cr
 			return ReviewFreezeManifest{}, fmt.Errorf("%w: invalid image digest %q", ErrInvalidReviewFreeze, digest)
 		}
 		imageSet[digest] = struct{}{}
+	}
+	if len(imageSet) == 0 {
+		return ReviewFreezeManifest{}, fmt.Errorf("%w: at least one immutable image digest is required", ErrInvalidReviewFreeze)
 	}
 	for digest := range imageSet {
 		manifest.ImageDigests = append(manifest.ImageDigests, digest)
@@ -99,7 +102,7 @@ func BuildReviewFreeze(repositorySHA string, artifacts []NamedEvidenceWindow, cr
 }
 
 func (m ReviewFreezeManifest) Validate() error {
-	if m.Version != ReviewFreezeVersion || m.RepositorySHA == "" || m.NetworkID == "" || m.GenesisHash == "" || m.CarrotPolicyHash == "" || m.CreatedAt.IsZero() || len(m.Evidence) == 0 || m.Hash == "" || m.Hash != reviewFreezeHash(m) {
+	if m.Version != ReviewFreezeVersion || m.RepositorySHA == "" || len(m.ImageDigests) == 0 || m.NetworkID == "" || m.GenesisHash == "" || m.CarrotPolicyHash == "" || m.CreatedAt.IsZero() || len(m.Evidence) == 0 || m.Hash == "" || m.Hash != reviewFreezeHash(m) {
 		return ErrInvalidReviewFreeze
 	}
 	seenDigests := map[string]struct{}{}
