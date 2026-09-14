@@ -84,27 +84,28 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - v0.14 security-review handoff records remediated findings and remaining blockers
 - TEST-CARROT remains non-economic
 
-## v0.15 — Live distributed testnet + independent review freeze — repository side in progress
+## v0.15 — Live distributed testnet + independent review freeze — repository-ready; live evidence pending
 
-Repository-side work:
+Repository-side tooling is implemented and merge-gated:
 
 - dedicated provider-neutral `pop-node` container image with persistent `/data` and configuration mounts
 - versioned live-evidence artifact bound to exact repository SHA, genesis, CARROT policy, optional network-map hash, operator inventory, timestamps, samples, and deterministic artifact hash
-- repeated status/checkpoint sampler with availability/latency measurements
-- same-height finalized-hash/state-root disagreements are retained as explicit incidents rather than discarded
+- repeated status/checkpoint sampler with availability/latency measurements and available-sample readiness gates
+- any conflicting observation of the same finalized height anywhere in the retained window is preserved as an explicit incident
 - review-readiness gate can require operator/provider/region/sample/window coverage without claiming those metadata labels are cryptographic truth
 - manual GitHub Actions evidence workflow binds collection to `GITHUB_SHA` and retains the artifact
-- review-freeze manifest hashes every evidence file and rejects mixed repository/network/genesis/CARROT-policy targets
+- review-freeze manifest hashes every evidence file, requires immutable deployed container image digest(s), and rejects mixed repository/network/genesis/CARROT-policy targets
 - provider-neutral deployment/operator runbook and independent-review package documentation
+- normal CI builds the operator container image and gates the evidence/freeze invariants
 
-Operational work still required before v0.15 is complete:
+Operational work still required before v0.15 is evidence-complete:
 
 - run independent public nodes across multiple real provider/network paths where practical
-- retain image digests and independently corroborate provider/region/ASN metadata
+- retain immutable image digests and independently corroborate provider/region/ASN metadata
 - exercise node loss, provider loss, rolling restart, peer churn, delayed recovery, and bounded partial partitions on owned/authorized infrastructure
 - retain latency/availability/checkpoint/catch-up/round-change evidence and resolve any consensus disagreement
 - tune timeout/backoff policy from real measured latency if needed; any executable change requires a new frozen SHA/evidence window
-- generate the final review-freeze manifest over the exact merged `dev` SHA and evidence artifacts
+- generate the final review-freeze manifest over the exact merged `dev` SHA, immutable deployed image digest(s), and retained evidence artifacts
 - hand that package to an independent consensus/security reviewer and remediate findings before any production-security claim
 - separately complete appropriate legal/tax/privacy/app-store review before economically valuable CARROT
 - keep TEST-CARROT valueless throughout the evidence/review window
