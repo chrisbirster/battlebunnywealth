@@ -1,0 +1,16 @@
+[
+  {
+    "id": "operator-a",
+    "url": "https://node-a.example.net",
+    "provider": "provider-a",
+    "region": "region-a",
+    "asn": 0
+  },
+  {
+    "id": "operator-b",
+    "url": "https://node-b.example.net",
+    "provider": "provider-b",
+    "region": "region-b",
+    "asn": 0
+  }
+]
