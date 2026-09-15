@@ -39,10 +39,10 @@ Record each printed node ID and public key. Those public values are required whe
 Choose globally unique app names:
 
 ```bash
-export APP_IAD=battlebunny-pop-iad-REPLACE
-export APP_ORD=battlebunny-pop-ord-REPLACE
-export APP_DFW=battlebunny-pop-dfw-REPLACE
-export APP_LAX=battlebunny-pop-lax-REPLACE
+export APP_IAD=bbwealth-pop-iad
+export APP_ORD=bbwealth-pop-ord
+export APP_DFW=bbwealth-pop-dfw
+export APP_LAX=bbwealth-pop-lax
 
 fly apps create "$APP_IAD"
 fly apps create "$APP_ORD"
@@ -57,27 +57,54 @@ fly volumes create pop_data -a "$APP_LAX" -r lax --size 1
 
 Each volume is independent and region-local. Consensus/catch-up replicates finalized history; Fly Volumes do not replicate it for us.
 
-## 4. Build one `node.json` per Fly app
+## 4. Generate one canonical genesis and all four node configs
 
-All four configs share the exact same `genesis`. Set `listen` to `:9101`. Each peer entry uses the other node's ID, public key, and dedicated Fly hostname:
+Do not hand-edit genesis hashes or peer lists. Prepare two local public manifests under `.fly-private/`:
+
+- `validators.json` — exactly four genesis validator/device public identities;
+- `nodes.json` — exactly four full-node public identities and Fly endpoints.
+
+Example node entry:
 
 ```json
 {
-  "nodeId": "peer node id",
-  "publicKey": "peer Ed25519 public key",
-  "url": "https://peer-app.fly.dev"
+  "name": "iad",
+  "nodeId": "<node id printed by pop-node -keygen>",
+  "publicKey": "<public key printed by pop-node -keygen>",
+  "url": "https://bbwealth-pop-iad.fly.dev"
 }
 ```
 
-Each app should normally list the other three nodes as peers. Node count still grants zero validator voting power.
+Then generate all configs in one operation:
+
+```bash
+go run ./cmd/pop-bootstrap-config \
+  -validators .fly-private/validators.json \
+  -nodes .fly-private/nodes.json \
+  -network-id bbw-pop-fly-testnet-v1 \
+  -out .fly-private/bootstrap
+```
+
+The tool validates node IDs against their Ed25519 public keys, requires bare HTTPS URLs, creates one canonical CARROT-committed genesis, and gives every node the other three peers. It writes:
+
+```text
+.fly-private/bootstrap/genesis.json
+.fly-private/bootstrap/iad.node.json
+.fly-private/bootstrap/ord.node.json
+.fly-private/bootstrap/dfw.node.json
+.fly-private/bootstrap/lax.node.json
+.fly-private/bootstrap/bootstrap-summary.json
+```
+
+All four `*.node.json` files contain the exact same genesis hash. Full-node identities remain distinct from validator/device identities; running more Fly apps still creates zero validator votes.
 
 ## 5. Store node config and node key as Fly secrets
 
-`fly.toml` mounts both secrets as files. The secret values must be base64 encoded.
+`fly.toml` mounts both secrets as files. The secret values must be base64 encoded. Stage them before first deployment:
 
 ```bash
-fly secrets set -a "$APP_IAD" \
-  POP_NODE_CONFIG="$(base64 < .fly-private/iad.node.json | tr -d '\n')" \
+fly secrets set --stage -a "$APP_IAD" \
+  POP_NODE_CONFIG="$(base64 < .fly-private/bootstrap/iad.node.json | tr -d '\n')" \
   POP_NODE_KEY="$(base64 < .fly-private/iad.node.key | tr -d '\n')"
 ```
 

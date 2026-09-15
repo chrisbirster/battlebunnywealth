@@ -96,6 +96,13 @@ tasks:
     requires:
       vars: [OPERATORS, REPO_SHA]
 
+  fly:bootstrap-config:
+    desc: Generate one canonical genesis and four Fly node configs from public validator/node manifests
+    cmds:
+      - go run ./cmd/pop-bootstrap-config -validators "{{.VALIDATORS}}" -nodes "{{.NODES}}" -out "{{.OUT}}"
+    requires:
+      vars: [VALIDATORS, NODES, OUT]
+
   fly:deploy:
     desc: Deploy one existing Fly testnet app; REGION is iad, ord, dfw, or lax
     cmds:
@@ -123,6 +130,7 @@ tasks:
       - go build -o ./battlebunnywealth ./cmd/battlebunnywealth
       - go build -o ./pop-sim ./cmd/pop-sim
       - go build -o ./pop-bootstrap-sim ./cmd/pop-bootstrap-sim
+      - go build -o ./pop-bootstrap-config ./cmd/pop-bootstrap-config
       - go build -o ./pop-node ./cmd/pop-node
       - go build -o ./pop-cluster ./cmd/pop-cluster
       - go build -o ./carrot-spec ./cmd/carrot-spec
@@ -158,6 +166,7 @@ tasks:
       - go build ./cmd/battlebunnywealth
       - go build ./cmd/pop-sim
       - go build ./cmd/pop-bootstrap-sim
+      - go build ./cmd/pop-bootstrap-config
       - go build ./cmd/pop-node
       - go build ./cmd/pop-cluster
       - go build ./cmd/carrot-spec
