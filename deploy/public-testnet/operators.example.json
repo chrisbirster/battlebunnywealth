@@ -1,16 +1,30 @@
 [
   {
-    "id": "operator-a",
-    "url": "https://node-a.example.net",
-    "provider": "provider-a",
-    "region": "region-a",
+    "id": "fly-iad",
+    "url": "https://replace-me-iad.fly.dev",
+    "provider": "fly.io",
+    "region": "iad",
     "asn": 0
   },
   {
-    "id": "operator-b",
-    "url": "https://node-b.example.net",
-    "provider": "provider-b",
-    "region": "region-b",
+    "id": "fly-ord",
+    "url": "https://replace-me-ord.fly.dev",
+    "provider": "fly.io",
+    "region": "ord",
+    "asn": 0
+  },
+  {
+    "id": "fly-dfw",
+    "url": "https://replace-me-dfw.fly.dev",
+    "provider": "fly.io",
+    "region": "dfw",
+    "asn": 0
+  },
+  {
+    "id": "fly-lax",
+    "url": "https://replace-me-lax.fly.dev",
+    "provider": "fly.io",
+    "region": "lax",
     "asn": 0
   }
 ]

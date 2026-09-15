@@ -1,77 +1,136 @@
-# Public-testnet operator deployment
+# Public-testnet operator deployment — Fly.io only
 
-This directory contains provider-neutral examples for v0.15. A full node is infrastructure only: running more node processes does not create validator votes.
+Battle Bunny Wealth v0.15 deploys public-testnet full nodes only on Fly.io. A full node is infrastructure only: running more Fly Machines or Fly apps does not create validator votes.
+
+The evidence topology is **one Fly app per node**. Do not place several evidence nodes behind one Fly app hostname: each retained operator entry must address one independently deployed node endpoint.
+
+Canonical test regions:
+
+- `iad` — Ashburn, Virginia
+- `ord` — Chicago, Illinois
+- `dfw` — Dallas, Texas
+- `lax` — Los Angeles, California
+
+This gives four regional failure domains while intentionally accepting Fly.io as a single-provider concentration risk.
 
 ## 1. Freeze the code revision
 
-All operators in one evidence window should run the same merged `dev` commit and the same genesis/CARROT policy commitments. Record the image digest as well as the Git SHA.
+All nodes in an evidence window run the same merged `dev` SHA and the same genesis/CARROT commitments. Use `Dockerfile.pop-node`; never use an unpinned `latest` image for a review window.
+
+The final review freeze records the exact Fly-deployed image digest in addition to the Git SHA.
+
+## 2. Generate four independent node keys locally
+
+Never commit private node keys. `.fly-private/` is ignored by Git.
 
 ```bash
-docker build -f Dockerfile.pop-node -t battlebunnywealth-pop-node:<sha> .
-docker image inspect battlebunnywealth-pop-node:<sha> --format '{{.Id}}'
+mkdir -p .fly-private
+
+go run ./cmd/pop-node -keygen .fly-private/iad.node.key
+go run ./cmd/pop-node -keygen .fly-private/ord.node.key
+go run ./cmd/pop-node -keygen .fly-private/dfw.node.key
+go run ./cmd/pop-node -keygen .fly-private/lax.node.key
 ```
 
-Do not use an unpinned `latest` image during a review evidence window.
+Record each printed node ID and public key. Those public values are required when building the four node configs.
 
-## 2. Generate an independent node key
+## 3. Create one Fly app and volume per node
 
-Each operator owns a different full-node Ed25519 key and persistent data volume.
+Choose globally unique app names:
 
 ```bash
-docker run --rm -v "$PWD/data:/data" battlebunnywealth-pop-node:<sha> \
-  -keygen /data/node.key
+export APP_IAD=battlebunny-pop-iad-REPLACE
+export APP_ORD=battlebunny-pop-ord-REPLACE
+export APP_DFW=battlebunny-pop-dfw-REPLACE
+export APP_LAX=battlebunny-pop-lax-REPLACE
+
+fly apps create "$APP_IAD"
+fly apps create "$APP_ORD"
+fly apps create "$APP_DFW"
+fly apps create "$APP_LAX"
+
+fly volumes create pop_data -a "$APP_IAD" -r iad --size 1
+fly volumes create pop_data -a "$APP_ORD" -r ord --size 1
+fly volumes create pop_data -a "$APP_DFW" -r dfw --size 1
+fly volumes create pop_data -a "$APP_LAX" -r lax --size 1
 ```
 
-The output contains the node ID and public key. Exchange only those public values with the other operators. Never copy a node private key between providers.
+Each volume is independent and region-local. Consensus/catch-up replicates finalized history; Fly Volumes do not replicate it for us.
 
-## 3. Build `node.json`
+## 4. Build one `node.json` per Fly app
 
-Every node config contains the exact same `genesis` value and a peer list containing the other permissioned relay nodes. The local listen address should normally be `:9101` inside the container.
-
-Each peer entry needs:
+All four configs share the exact same `genesis`. Set `listen` to `:9101`. Each peer entry uses the other node's ID, public key, and dedicated Fly hostname:
 
 ```json
 {
   "nodeId": "peer node id",
   "publicKey": "peer Ed25519 public key",
-  "url": "https://peer.example.net"
+  "url": "https://peer-app.fly.dev"
 }
 ```
 
-The peer list authenticates relay traffic. It does not grant committee voting power.
+Each app should normally list the other three nodes as peers. Node count still grants zero validator voting power.
 
-## 4. Persist state
+## 5. Store node config and node key as Fly secrets
 
-Mount `/data` on durable provider storage. The node stores its private node key, genesis binding, finalized `blocks.ndjson`, and in-progress round state there. Losing the volume is a node-recovery event and should be recorded in the evidence window.
+`fly.toml` mounts both secrets as files. The secret values must be base64 encoded.
 
-`docker-compose.example.yml` shows the expected mounts. The node container also accepts the optional canonical network map at `/config/network-map.json`.
+```bash
+fly secrets set -a "$APP_IAD" \
+  POP_NODE_CONFIG="$(base64 < .fly-private/iad.node.json | tr -d '\n')" \
+  POP_NODE_KEY="$(base64 < .fly-private/iad.node.key | tr -d '\n')"
+```
 
-## 5. Expose HTTPS
+Repeat for `ord`, `dfw`, and `lax` using their own config/key files. Never reuse one node private key across apps.
 
-Terminate TLS in the provider load balancer/reverse proxy and route public HTTPS to container port `9101`. Evidence tooling uses:
+## 6. Deploy
 
-- `/v1/public/status`
-- `/v1/public/checkpoint`
-- `/v1/node/genesis`
-- `/v1/node/blocks`
+```bash
+fly deploy . --remote-only --ha=false -a "$APP_IAD" -c deploy/fly/fly.iad.toml --dockerfile Dockerfile.pop-node
+fly deploy . --remote-only --ha=false -a "$APP_ORD" -c deploy/fly/fly.ord.toml --dockerfile Dockerfile.pop-node
+fly deploy . --remote-only --ha=false -a "$APP_DFW" -c deploy/fly/fly.dfw.toml --dockerfile Dockerfile.pop-node
+fly deploy . --remote-only --ha=false -a "$APP_LAX" -c deploy/fly/fly.lax.toml --dockerfile Dockerfile.pop-node
+```
 
-Do not expose provider control-plane credentials or private node/validator keys through the HTTP service.
+`--ha=false` is intentional: each Fly app represents one evidence node with one region-local volume. Cross-node resilience comes from the four independent apps, not from Fly creating a hidden spare behind one hostname.
 
-## 6. Operator independence
+You can also run the manual **Deploy Fly Testnet Node** GitHub Action from the merged `dev` revision. It requires the repository secret `FLY_API_TOKEN`; node config/key secrets remain stored on the target Fly app.
 
-For a useful v0.15 window, prefer different provider/network failure domains and independent persistent volumes. Two regions on one provider are useful but do not count as two providers. Provider/region labels in `operators.json` are evidence metadata, not cryptographic truth; reviewers should independently verify them.
+## 7. Verify each node
 
-## 7. Failure exercises
+```bash
+fly status -a "$APP_IAD"
+fly checks list -a "$APP_IAD"
+curl "https://${APP_IAD}.fly.dev/v1/public/status"
+curl "https://${APP_IAD}.fly.dev/v1/public/checkpoint"
+```
 
-During a retained evidence window, record intentionally induced events rather than hiding them:
+Repeat for all four nodes. Copy `deploy/public-testnet/operators.example.json`, replace hostnames, and use that inventory for the retained evidence workflow.
 
-- stop one observer/full node and verify catch-up after restart;
-- lose one provider path temporarily;
-- restart nodes one at a time;
-- create peer churn without changing validator voting power;
-- delay one node long enough to produce measurable height lag;
+## 8. Evidence policy
+
+The Fly-only evidence gate requires:
+
+- four separately addressable Fly apps;
+- four distinct Fly regions;
+- one provider (`fly.io`);
+- independently persisted volumes;
+- the exact same merged `dev` SHA/genesis/CARROT policy;
+- no unresolved same-height checkpoint disagreement.
+
+This does **not** prove provider independence. A Fly-wide control-plane, backbone, or platform failure remains a correlated risk and must be listed in the external-review package.
+
+## 9. Failure exercises
+
+During the retained window, intentionally record authorized tests such as:
+
+- stop/restart one Fly app and verify catch-up;
+- stop one regional Machine and verify the other three continue;
+- rolling restart all four apps one at a time;
+- delay one node long enough to create measurable height lag;
+- temporarily isolate a peer path you control;
 - compare same-height checkpoints after recovery.
 
-Never induce an outage against third-party systems you do not own or have permission to test.
+Do not perform disruptive testing against Fly.io infrastructure itself or anything you do not own/control.
 
 TEST-CARROT remains valueless throughout v0.15.

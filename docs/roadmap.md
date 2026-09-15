@@ -84,27 +84,32 @@ Game shell, Warren Wars, seasonal economy/story, passkey identity, Proof-of-Play
 - v0.14 security-review handoff records remediated findings and remaining blockers
 - TEST-CARROT remains non-economic
 
-## v0.15 — Live distributed testnet + independent review freeze — repository-ready; live evidence pending
+## v0.15 — Live distributed testnet + independent review freeze — repository-ready; Fly evidence pending
 
 Repository-side tooling is implemented and merge-gated:
 
-- dedicated provider-neutral `pop-node` container image with persistent `/data` and configuration mounts
-- versioned live-evidence artifact bound to exact repository SHA, genesis, CARROT policy, optional network-map hash, operator inventory, timestamps, samples, and deterministic artifact hash
-- repeated status/checkpoint sampler with availability/latency measurements and available-sample readiness gates
+- dedicated `pop-node` container image with persistent `/data` and configuration mounts
+- Fly.io is the only deployment target
+- four separately addressable Fly apps are the canonical evidence topology: `iad`, `ord`, `dfw`, and `lax`
+- each Fly node has its own regional Machine, persistent volume, node key, node config, and `*.fly.dev` endpoint
+- Fly node config/key files are injected from Fly secrets; consensus history persists on the node volume
+- automatic Fly Machine stopping is disabled for evidence nodes
+- manual GitHub Actions deployment is restricted to merged `dev` revisions and uses `FLY_API_TOKEN`
+- versioned live-evidence artifact binds exact repository SHA, genesis, CARROT policy, optional network-map hash, operator inventory, timestamps, samples, and deterministic artifact hash
+- repeated status/checkpoint sampler records availability/latency and requires available samples
 - any conflicting observation of the same finalized height anywhere in the retained window is preserved as an explicit incident
-- review-readiness gate can require operator/provider/region/sample/window coverage without claiming those metadata labels are cryptographic truth
-- manual GitHub Actions evidence workflow binds collection to `GITHUB_SHA` and retains the artifact
+- Fly-only readiness requires one provider and four distinct regions; provider count is no longer treated as an independence gate
 - review-freeze manifest hashes every evidence file, requires immutable deployed container image digest(s), and rejects mixed repository/network/genesis/CARROT-policy targets
-- provider-neutral deployment/operator runbook and independent-review package documentation
-- normal CI builds the operator container image and gates the evidence/freeze invariants
+- normal CI builds the operator image and gates evidence/freeze invariants
 
 Operational work still required before v0.15 is evidence-complete:
 
-- run independent public nodes across multiple real provider/network paths where practical
-- retain immutable image digests and independently corroborate provider/region/ASN metadata
-- exercise node loss, provider loss, rolling restart, peer churn, delayed recovery, and bounded partial partitions on owned/authorized infrastructure
+- deploy and run all four Fly regional node apps from the same merged `dev` SHA
+- retain immutable Fly image digest(s) and `fly status` evidence for each app/region
+- exercise node loss, regional node loss, rolling restart, peer churn, delayed recovery, and bounded partial partitions on owned infrastructure
 - retain latency/availability/checkpoint/catch-up/round-change evidence and resolve any consensus disagreement
-- tune timeout/backoff policy from real measured latency if needed; any executable change requires a new frozen SHA/evidence window
+- explicitly record Fly-wide control-plane/backbone/provider failure as a correlated concentration risk not covered by the four-region test
+- tune timeout/backoff policy from real measured Fly regional latency if needed; any executable change requires a new frozen SHA/evidence window
 - generate the final review-freeze manifest over the exact merged `dev` SHA, immutable deployed image digest(s), and retained evidence artifacts
 - hand that package to an independent consensus/security reviewer and remediate findings before any production-security claim
 - separately complete appropriate legal/tax/privacy/app-store review before economically valuable CARROT
@@ -126,7 +131,7 @@ Operational work still required before v0.15 is evidence-complete:
 - robust committee/finality behavior through validator-set changes, protocol upgrades, and round changes
 - deterministic fixed-supply CARROT accounting
 - reviewed wallet/treasury/governance path
-- completed live distributed-testnet evidence window
+- completed Fly regional distributed-testnet evidence window
 - independent external security review plus legal/tax/privacy/app-store review appropriate for an economically valuable launch
 
 Economic activation happens only after those gates are satisfied, not merely because the code can represent CARROT.

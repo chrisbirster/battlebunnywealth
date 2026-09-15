@@ -90,11 +90,18 @@ tasks:
       vars: [URL1, URL2]
 
   testnet:live-evidence:
-    desc: Collect a retained 12-sample live evidence window from an operator inventory
+    desc: Collect a retained Fly-only evidence window across four regions
     cmds:
-      - go run ./cmd/pop-live-evidence -operators "{{.OPERATORS}}" -repo-sha "{{.REPO_SHA}}" -samples 12 -interval 5m -min-providers 2 -min-regions 2 -min-samples-per-operator 12 -min-window 30m -gate -out live-evidence.json
+      - go run ./cmd/pop-live-evidence -operators "{{.OPERATORS}}" -repo-sha "{{.REPO_SHA}}" -samples 12 -interval 5m -min-providers 1 -min-regions 4 -min-samples-per-operator 12 -min-window 30m -gate -out live-evidence.json
     requires:
       vars: [OPERATORS, REPO_SHA]
+
+  fly:deploy:
+    desc: Deploy one existing Fly testnet app; REGION is iad, ord, dfw, or lax
+    cmds:
+      - fly deploy . --remote-only --ha=false -a "{{.APP}}" -c "deploy/fly/fly.{{.REGION}}.toml" --dockerfile Dockerfile.pop-node
+    requires:
+      vars: [APP, REGION]
 
   review:freeze:
     desc: Freeze validated live evidence against an exact merged dev SHA and deployed image digest

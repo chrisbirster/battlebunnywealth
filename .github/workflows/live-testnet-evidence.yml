@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       operators_json:
-        description: JSON array of operator descriptors (id,url,provider,region,asn)
+        description: JSON array of Fly node descriptors (id,url,provider,region,asn)
         required: true
         type: string
       samples:
@@ -18,14 +18,14 @@ on:
         default: '5m'
         type: string
       min_providers:
-        description: Minimum declared provider count for the gate
+        description: Minimum declared provider count; Fly-only profile is 1
         required: true
-        default: '2'
+        default: '1'
         type: string
       min_regions:
-        description: Minimum declared region count for the gate
+        description: Minimum distinct Fly regions for the gate
         required: true
-        default: '2'
+        default: '4'
         type: string
       min_window:
         description: Minimum evidence window as a Go duration

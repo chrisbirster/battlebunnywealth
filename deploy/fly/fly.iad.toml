@@ -1,0 +1,36 @@
+primary_region = "iad"
+kill_signal = "SIGTERM"
+kill_timeout = "15s"
+
+[experimental]
+  cmd = ["-config", "/config/node.json", "-data", "/data", "-key", "/config/node.key"]
+
+[[files]]
+  guest_path = "/config/node.json"
+  secret_name = "POP_NODE_CONFIG"
+
+[[files]]
+  guest_path = "/config/node.key"
+  secret_name = "POP_NODE_KEY"
+
+[[mounts]]
+  source = "pop_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 9101
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/v1/public/status"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
