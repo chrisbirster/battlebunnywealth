@@ -42,7 +42,7 @@ jobs:
       - name: Test testnet voting, round change, and fault rejection
         run: go test ./internal/testnet -run 'Test(FourValidator|TwoOffline|InvalidSignature|HundredFake|DuplicateVote|ProposalRejects|RoundChange|ValidatorCannotOmit|RoundProgress|ProposerEquivocation|ProposalAndVoteEquivocation)'
       - name: Test testnet transport and recovery
-        run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress|SyncFromWithStore|StoreIgnoresStale)'
+        run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress|SyncFromWithStore|StoreIgnoresStale|BuildNodeConfigs)'
       - name: Gate replicated TEST-CARROT and transition state
         run: go test ./internal/publictestnet
       - name: Gate live evidence and review-freeze invariants
@@ -71,6 +71,8 @@ jobs:
         run: go build ./cmd/pop-sim
       - name: Build bootstrap simulator
         run: go build ./cmd/pop-bootstrap-sim
+      - name: Build Fly bootstrap config tool
+        run: go build ./cmd/pop-bootstrap-config
       - name: Build testnet node
         run: go build ./cmd/pop-node
       - name: Build testnet cluster harness
