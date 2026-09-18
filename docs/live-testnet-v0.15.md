@@ -73,8 +73,9 @@ For the independent-review freeze, use a substantially longer window than this s
 
 ## GitHub workflows
 
-- `.github/workflows/deploy-fly-testnet.yml` manually deploys one existing Fly app from the selected merged `dev` revision. It requires `FLY_API_TOKEN`; node config/key remain Fly app secrets.
-- `.github/workflows/live-testnet-evidence.yml` collects retained evidence and defaults to one provider plus four Fly regions.
+- `.github/workflows/deploy-fly-testnet.yml` manually deploys one existing Fly app from the selected merged `dev` revision. It requires `FLY_API_TOKEN`; node config/key remain Fly app secrets and the deployment artifact retains the raw Machine inventory with immutable image digest.
+- `.github/workflows/capture-fly-topology.yml` captures all four Fly Machine inventories, validates the canonical `iad`/`ord`/`dfw`/`lax` layout, binds it to `GITHUB_SHA`, and emits a hash-committed `fly-topology.json`.
+- `.github/workflows/live-testnet-evidence.yml` collects retained consensus evidence and defaults to one provider plus four Fly regions.
 
 Neither workflow changes consensus voting power.
 
@@ -105,9 +106,10 @@ v0.15 is evidence-complete only when all of the following are true:
 - all retained evidence validates and hashes are recorded;
 - no unresolved same-height checkpoint disagreement exists;
 - regional node-loss/recovery evidence is retained;
-- the exact deployed `dev` SHA, immutable Fly image digest, genesis hash, CARROT policy hash, and network-map provenance are recorded;
+- the exact deployed `dev` SHA, validated Fly topology, immutable Fly image digest(s), genesis hash, CARROT policy hash, and network-map provenance are recorded;
+- the retained topology includes the raw four `flyctl machines list --json` responses and their byte hashes;
 - the review package explicitly lists Fly-wide correlated failure as an untested/provider-concentration risk;
-- `pop-review-freeze` produces a valid manifest;
+- `pop-review-freeze` validates that the Fly topology SHA and image digest set match the frozen target and produces a valid manifest;
 - the package is ready for an independent consensus/security reviewer.
 
 TEST-CARROT remains valueless. Economically valuable CARROT remains blocked on external security review and appropriate legal/tax/privacy/app-store review.
