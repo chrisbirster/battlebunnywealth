@@ -99,13 +99,14 @@ Repository-side tooling is implemented and merge-gated:
 - repeated status/checkpoint sampler records availability/latency and requires available samples
 - any conflicting observation of the same finalized height anywhere in the retained window is preserved as an explicit incident
 - Fly-only readiness requires one provider and four distinct regions; provider count is no longer treated as an independence gate
-- review-freeze manifest hashes every evidence file, requires immutable deployed container image digest(s), and rejects mixed repository/network/genesis/CARROT-policy targets
-- normal CI builds the operator image and gates evidence/freeze invariants
+- a dedicated Fly topology snapshot validates exactly one started Machine in each canonical region, records immutable `image_ref.digest` values, and hash-commits the raw Machine inventories against the exact repository SHA
+- review-freeze manifest hashes every live/supporting evidence file, requires topology and supplied image digests to agree, and rejects mixed repository/network/genesis/CARROT-policy targets
+- normal CI builds the operator image and gates topology/evidence/freeze invariants
 
 Operational work still required before v0.15 is evidence-complete:
 
 - deploy and run all four Fly regional node apps from the same merged `dev` SHA
-- retain immutable Fly image digest(s) and `fly status` evidence for each app/region
+- capture and retain the validated four-app Fly topology artifact, immutable image digest(s), and raw Machine inventories for each app/region
 - exercise node loss, regional node loss, rolling restart, peer churn, delayed recovery, and bounded partial partitions on owned infrastructure
 - retain latency/availability/checkpoint/catch-up/round-change evidence and resolve any consensus disagreement
 - explicitly record Fly-wide control-plane/backbone/provider failure as a correlated concentration risk not covered by the four-region test
