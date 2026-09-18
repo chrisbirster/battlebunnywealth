@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
+      - name: Require merged dev revision
+        run: test "$GITHUB_REF" = "refs/heads/dev"
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
