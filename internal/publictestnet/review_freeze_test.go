@@ -76,7 +76,8 @@ func TestReviewFreezeRejectsDifferentRepositorySHA(t *testing.T) {
 	start := time.Unix(1_800_000_000, 0).UTC()
 	window := reviewFreezeWindow(t, "other", start)
 	raw, _ := json.Marshal(window)
-	if _, err := BuildReviewFreeze("wanted", []NamedEvidenceWindow{{Name: "window.json", Raw: raw, Window: window}}, start.Add(2*time.Hour)); err == nil {
+	digest := "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	if _, err := BuildReviewFreeze("wanted", []NamedEvidenceWindow{{Name: "window.json", Raw: raw, Window: window}}, start.Add(2*time.Hour), digest); err == nil {
 		t.Fatal("expected repository SHA mismatch")
 	}
 }
