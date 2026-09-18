@@ -30,14 +30,17 @@ type evidenceEnvelope struct {
 
 func main() {
 	repositorySHA := flag.String("repo-sha", "", "exact merged dev commit SHA to freeze")
+	flyTopologyPath := flag.String("fly-topology", "", "validated Fly topology evidence JSON for the deployed review target")
 	outPath := flag.String("out", "review-freeze.json", "output manifest path")
 	var files repeatedFlag
 	var imageDigests repeatedFlag
+	var supportingFiles repeatedFlag
 	flag.Var(&files, "evidence", "live evidence JSON file; repeat for every retained evidence window")
 	flag.Var(&imageDigests, "image-digest", "deployed immutable container image digest (sha256:...); repeat when operators used more than one identical-code image build")
+	flag.Var(&supportingFiles, "supporting-evidence", "supporting evidence/provenance file to hash into the freeze; repeat as needed")
 	flag.Parse()
-	if strings.TrimSpace(*repositorySHA) == "" || len(files) == 0 || len(imageDigests) == 0 {
-		fatal(fmt.Errorf("-repo-sha, at least one -image-digest, and at least one -evidence are required"))
+	if strings.TrimSpace(*repositorySHA) == "" || strings.TrimSpace(*flyTopologyPath) == "" || len(files) == 0 || len(imageDigests) == 0 {
+		fatal(fmt.Errorf("-repo-sha, -fly-topology, at least one -image-digest, and at least one -evidence are required"))
 	}
 	artifacts := make([]publictestnet.NamedEvidenceWindow, 0, len(files))
 	for _, path := range files {
@@ -58,7 +61,34 @@ func main() {
 		}
 		artifacts = append(artifacts, publictestnet.NamedEvidenceWindow{Name: filepath.Base(path), Raw: raw, Window: envelope.Evidence})
 	}
-	manifest, err := publictestnet.BuildReviewFreeze(strings.TrimSpace(*repositorySHA), artifacts, time.Now().UTC(), imageDigests...)
+	topologyRaw, err := os.ReadFile(*flyTopologyPath)
+	if err != nil {
+		fatal(err)
+	}
+	var topology publictestnet.FlyTopologyEvidence
+	if err := json.Unmarshal(topologyRaw, &topology); err != nil {
+		fatal(fmt.Errorf("decode Fly topology %s: %w", *flyTopologyPath, err))
+	}
+	if err := topology.Validate(); err != nil {
+		fatal(fmt.Errorf("validate Fly topology %s: %w", *flyTopologyPath, err))
+	}
+	if topology.RepositorySHA != strings.TrimSpace(*repositorySHA) {
+		fatal(fmt.Errorf("Fly topology repository SHA mismatch"))
+	}
+	if !sameDigestSet(topology.ImageDigests, imageDigests) {
+		fatal(fmt.Errorf("Fly topology image digests do not match -image-digest values"))
+	}
+
+	supporting := make([]publictestnet.NamedSupportingArtifact, 0, len(supportingFiles)+1)
+	supporting = append(supporting, publictestnet.NamedSupportingArtifact{Name: filepath.Base(*flyTopologyPath), Raw: topologyRaw})
+	for _, path := range supportingFiles {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			fatal(err)
+		}
+		supporting = append(supporting, publictestnet.NamedSupportingArtifact{Name: filepath.Base(path), Raw: raw})
+	}
+	manifest, err := publictestnet.BuildReviewFreezeWithSupporting(strings.TrimSpace(*repositorySHA), artifacts, supporting, time.Now().UTC(), imageDigests...)
 	if err != nil {
 		fatal(err)
 	}
@@ -69,7 +99,27 @@ func main() {
 	if err := os.WriteFile(*outPath, append(raw, '\n'), 0o600); err != nil {
 		fatal(err)
 	}
-	fmt.Printf("review freeze: %s evidence=%d images=%d hash=%s\n", *outPath, len(manifest.Evidence), len(manifest.ImageDigests), manifest.Hash)
+	fmt.Printf("review freeze: %s evidence=%d supporting=%d images=%d hash=%s\n", *outPath, len(manifest.Evidence), len(manifest.SupportingEvidence), len(manifest.ImageDigests), manifest.Hash)
+}
+
+func sameDigestSet(want []string, got []string) bool {
+	wanted := map[string]struct{}{}
+	for _, digest := range want {
+		wanted[strings.ToLower(strings.TrimSpace(digest))] = struct{}{}
+	}
+	actual := map[string]struct{}{}
+	for _, digest := range got {
+		actual[strings.ToLower(strings.TrimSpace(digest))] = struct{}{}
+	}
+	if len(wanted) != len(actual) {
+		return false
+	}
+	for digest := range wanted {
+		if _, ok := actual[digest]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func fatal(err error) {

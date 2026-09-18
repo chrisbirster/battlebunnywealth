@@ -1,0 +1,80 @@
+name: Capture Fly Topology Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_iad:
+        description: Existing Fly app name in iad
+        required: true
+        type: string
+      app_ord:
+        description: Existing Fly app name in ord
+        required: true
+        type: string
+      app_dfw:
+        description: Existing Fly app name in dfw
+        required: true
+        type: string
+      app_lax:
+        description: Existing Fly app name in lax
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require merged dev revision
+        run: test "$GITHUB_REF" = "refs/heads/dev"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Capture raw Fly machine inventories
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          APP_IAD: ${{ inputs.app_iad }}
+          APP_ORD: ${{ inputs.app_ord }}
+          APP_DFW: ${{ inputs.app_dfw }}
+          APP_LAX: ${{ inputs.app_lax }}
+        run: |
+          set -euo pipefail
+          test -n "$FLY_API_TOKEN"
+          flyctl machines list -a "$APP_IAD" --json > fly-iad-machines.json
+          flyctl machines list -a "$APP_ORD" --json > fly-ord-machines.json
+          flyctl machines list -a "$APP_DFW" --json > fly-dfw-machines.json
+          flyctl machines list -a "$APP_LAX" --json > fly-lax-machines.json
+
+          jq -n \
+            --arg iad "$APP_IAD" \
+            --arg ord "$APP_ORD" \
+            --arg dfw "$APP_DFW" \
+            --arg lax "$APP_LAX" \
+            '[
+              {operatorId:"iad", appName:$iad, region:"iad", machinesFile:"fly-iad-machines.json"},
+              {operatorId:"ord", appName:$ord, region:"ord", machinesFile:"fly-ord-machines.json"},
+              {operatorId:"dfw", appName:$dfw, region:"dfw", machinesFile:"fly-dfw-machines.json"},
+              {operatorId:"lax", appName:$lax, region:"lax", machinesFile:"fly-lax-machines.json"}
+            ]' > fly-topology-input.json
+      - name: Validate and hash four-region topology
+        run: |
+          go run ./cmd/pop-fly-topology \
+            -inventory fly-topology-input.json \
+            -repo-sha "$GITHUB_SHA" \
+            -out fly-topology.json
+          jq -r '.nodes[] | [.operatorId, .appName, .region, .machineId, .state, .imageDigest] | @tsv' fly-topology.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fly-topology-${{ github.sha }}
+          path: |
+            fly-topology.json
+            fly-topology-input.json
+            fly-*-machines.json
+          if-no-files-found: error
+          retention-days: 90

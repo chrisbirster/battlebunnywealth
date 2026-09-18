@@ -21,17 +21,23 @@ type EvidenceArtifactDigest struct {
 	EvidenceHash string `json:"evidenceHash"`
 }
 
+type SupportingArtifactDigest struct {
+	Name   string `json:"name"`
+	SHA256 string `json:"sha256"`
+}
+
 type ReviewFreezeManifest struct {
-	Version          int                      `json:"version"`
-	RepositorySHA    string                   `json:"repositorySha"`
-	ImageDigests     []string                 `json:"imageDigests"`
-	NetworkID        string                   `json:"networkId"`
-	GenesisHash      string                   `json:"genesisHash"`
-	CarrotPolicyHash string                   `json:"carrotPolicyHash"`
-	NetworkMapHashes []string                 `json:"networkMapHashes,omitempty"`
-	CreatedAt        time.Time                `json:"createdAt"`
-	Evidence         []EvidenceArtifactDigest `json:"evidence"`
-	Hash             string                   `json:"hash"`
+	Version            int                        `json:"version"`
+	RepositorySHA      string                     `json:"repositorySha"`
+	ImageDigests       []string                   `json:"imageDigests"`
+	NetworkID          string                     `json:"networkId"`
+	GenesisHash        string                     `json:"genesisHash"`
+	CarrotPolicyHash   string                     `json:"carrotPolicyHash"`
+	NetworkMapHashes   []string                   `json:"networkMapHashes,omitempty"`
+	CreatedAt          time.Time                  `json:"createdAt"`
+	Evidence           []EvidenceArtifactDigest   `json:"evidence"`
+	SupportingEvidence []SupportingArtifactDigest `json:"supportingEvidence,omitempty"`
+	Hash               string                     `json:"hash"`
 }
 
 type NamedEvidenceWindow struct {
@@ -40,7 +46,20 @@ type NamedEvidenceWindow struct {
 	Window LiveEvidenceWindow
 }
 
+type NamedSupportingArtifact struct {
+	Name string
+	Raw  []byte
+}
+
 func BuildReviewFreeze(repositorySHA string, artifacts []NamedEvidenceWindow, createdAt time.Time, imageDigests ...string) (ReviewFreezeManifest, error) {
+	return buildReviewFreeze(repositorySHA, artifacts, nil, createdAt, imageDigests...)
+}
+
+func BuildReviewFreezeWithSupporting(repositorySHA string, artifacts []NamedEvidenceWindow, supporting []NamedSupportingArtifact, createdAt time.Time, imageDigests ...string) (ReviewFreezeManifest, error) {
+	return buildReviewFreeze(repositorySHA, artifacts, supporting, createdAt, imageDigests...)
+}
+
+func buildReviewFreeze(repositorySHA string, artifacts []NamedEvidenceWindow, supporting []NamedSupportingArtifact, createdAt time.Time, imageDigests ...string) (ReviewFreezeManifest, error) {
 	if strings.TrimSpace(repositorySHA) == "" || len(artifacts) == 0 || createdAt.IsZero() {
 		return ReviewFreezeManifest{}, ErrInvalidReviewFreeze
 	}
@@ -92,11 +111,26 @@ func BuildReviewFreeze(repositorySHA string, artifacts []NamedEvidenceWindow, cr
 		sum := sha256.Sum256(artifact.Raw)
 		manifest.Evidence = append(manifest.Evidence, EvidenceArtifactDigest{Name: artifact.Name, SHA256: hex.EncodeToString(sum[:]), EvidenceHash: artifact.Window.Hash})
 	}
+	for _, artifact := range supporting {
+		name := strings.TrimSpace(artifact.Name)
+		if name == "" || len(artifact.Raw) == 0 {
+			return ReviewFreezeManifest{}, ErrInvalidReviewFreeze
+		}
+		if _, ok := seenNames[name]; ok {
+			return ReviewFreezeManifest{}, fmt.Errorf("%w: duplicate evidence name %q", ErrInvalidReviewFreeze, name)
+		}
+		seenNames[name] = struct{}{}
+		sum := sha256.Sum256(artifact.Raw)
+		manifest.SupportingEvidence = append(manifest.SupportingEvidence, SupportingArtifactDigest{Name: name, SHA256: hex.EncodeToString(sum[:])})
+	}
 	for value := range maps {
 		manifest.NetworkMapHashes = append(manifest.NetworkMapHashes, value)
 	}
 	sort.Strings(manifest.NetworkMapHashes)
 	sort.Slice(manifest.Evidence, func(i, j int) bool { return manifest.Evidence[i].Name < manifest.Evidence[j].Name })
+	sort.Slice(manifest.SupportingEvidence, func(i, j int) bool {
+		return manifest.SupportingEvidence[i].Name < manifest.SupportingEvidence[j].Name
+	})
 	manifest.Hash = reviewFreezeHash(manifest)
 	return manifest, nil
 }
@@ -117,7 +151,16 @@ func (m ReviewFreezeManifest) Validate() error {
 	}
 	seen := map[string]struct{}{}
 	for _, artifact := range m.Evidence {
-		if artifact.Name == "" || len(artifact.SHA256) != 64 || len(artifact.EvidenceHash) != 64 {
+		if artifact.Name == "" || !validHexSHA256(artifact.SHA256) || !validHexSHA256(artifact.EvidenceHash) {
+			return ErrInvalidReviewFreeze
+		}
+		if _, ok := seen[artifact.Name]; ok {
+			return ErrInvalidReviewFreeze
+		}
+		seen[artifact.Name] = struct{}{}
+	}
+	for _, artifact := range m.SupportingEvidence {
+		if artifact.Name == "" || !validHexSHA256(artifact.SHA256) {
 			return ErrInvalidReviewFreeze
 		}
 		if _, ok := seen[artifact.Name]; ok {
