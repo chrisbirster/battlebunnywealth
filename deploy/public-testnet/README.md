@@ -134,6 +134,10 @@ curl "https://${APP_IAD}.fly.dev/v1/public/checkpoint"
 
 Repeat for all four nodes. Copy `deploy/public-testnet/operators.example.json`, replace hostnames, and use that inventory for the retained evidence workflow.
 
+After all four apps are started, run the manual **Capture Fly Topology Evidence** workflow from the exact merged `dev` revision. It captures `flyctl machines list --json` for every app, requires exactly one started Machine in each of `iad`, `ord`, `dfw`, and `lax`, records each Machine's immutable `image_ref.digest`, hashes the raw Fly responses, and emits `fly-topology.json`. Retain the full workflow artifact with the evidence window.
+
+A successful manual config check is useful operational preparation, but it is not the retained v0.15 evidence by itself. The topology artifact is the reproducible record of the deployed layout and image bytes.
+
 ## 8. Evidence policy
 
 The Fly-only evidence gate requires:
@@ -143,6 +147,7 @@ The Fly-only evidence gate requires:
 - one provider (`fly.io`);
 - independently persisted volumes;
 - the exact same merged `dev` SHA/genesis/CARROT policy;
+- a validated `fly-topology.json` plus the raw four Machine inventories and immutable image digest(s);
 - no unresolved same-height checkpoint disagreement.
 
 This does **not** prove provider independence. A Fly-wide control-plane, backbone, or platform failure remains a correlated risk and must be listed in the external-review package.
