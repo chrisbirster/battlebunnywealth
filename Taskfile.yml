@@ -118,11 +118,11 @@ tasks:
       vars: [INVENTORY, REPO_SHA]
 
   review:freeze:
-    desc: Freeze validated live evidence against an exact merged dev SHA and deployed image digest
+    desc: Freeze validated live evidence and Fly topology against an exact merged dev SHA and deployed image digest
     cmds:
-      - go run ./cmd/pop-review-freeze -repo-sha "{{.REPO_SHA}}" -image-digest "{{.IMAGE_DIGEST}}" -evidence "{{.EVIDENCE}}" -out review-freeze.json
+      - go run ./cmd/pop-review-freeze -repo-sha "{{.REPO_SHA}}" -fly-topology "{{.TOPOLOGY}}" -image-digest "{{.IMAGE_DIGEST}}" -evidence "{{.EVIDENCE}}" -out review-freeze.json
     requires:
-      vars: [REPO_SHA, IMAGE_DIGEST, EVIDENCE]
+      vars: [REPO_SHA, TOPOLOGY, IMAGE_DIGEST, EVIDENCE]
 
   build:web:
     desc: Build the Solid SPA into web/dist
