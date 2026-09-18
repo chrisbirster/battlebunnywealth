@@ -51,7 +51,12 @@ jobs:
           flyctl machines list -a "$APP_DFW" --json > fly-dfw-machines.json
           flyctl machines list -a "$APP_LAX" --json > fly-lax-machines.json
 
-          jq -n             --arg iad "$APP_IAD"             --arg ord "$APP_ORD"             --arg dfw "$APP_DFW"             --arg lax "$APP_LAX"             '[
+          jq -n \
+            --arg iad "$APP_IAD" \
+            --arg ord "$APP_ORD" \
+            --arg dfw "$APP_DFW" \
+            --arg lax "$APP_LAX" \
+            '[
               {operatorId:"iad", appName:$iad, region:"iad", machinesFile:"fly-iad-machines.json"},
               {operatorId:"ord", appName:$ord, region:"ord", machinesFile:"fly-ord-machines.json"},
               {operatorId:"dfw", appName:$dfw, region:"dfw", machinesFile:"fly-dfw-machines.json"},
@@ -59,7 +64,10 @@ jobs:
             ]' > fly-topology-input.json
       - name: Validate and hash four-region topology
         run: |
-          go run ./cmd/pop-fly-topology             -inventory fly-topology-input.json             -repo-sha "$GITHUB_SHA"             -out fly-topology.json
+          go run ./cmd/pop-fly-topology \
+            -inventory fly-topology-input.json \
+            -repo-sha "$GITHUB_SHA" \
+            -out fly-topology.json
           jq -r '.nodes[] | [.operatorId, .appName, .region, .machineId, .state, .imageDigest] | @tsv' fly-topology.json
       - uses: actions/upload-artifact@v4
         with:
