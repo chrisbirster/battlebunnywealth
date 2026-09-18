@@ -110,6 +110,13 @@ tasks:
     requires:
       vars: [APP, REGION]
 
+  fly:topology-evidence:
+    desc: Validate and hash four captured Fly machine inventories
+    cmds:
+      - go run ./cmd/pop-fly-topology -inventory "{{.INVENTORY}}" -repo-sha "{{.REPO_SHA}}" -out fly-topology.json
+    requires:
+      vars: [INVENTORY, REPO_SHA]
+
   review:freeze:
     desc: Freeze validated live evidence against an exact merged dev SHA and deployed image digest
     cmds:
@@ -131,6 +138,7 @@ tasks:
       - go build -o ./pop-sim ./cmd/pop-sim
       - go build -o ./pop-bootstrap-sim ./cmd/pop-bootstrap-sim
       - go build -o ./pop-bootstrap-config ./cmd/pop-bootstrap-config
+      - go build -o ./pop-fly-topology ./cmd/pop-fly-topology
       - go build -o ./pop-node ./cmd/pop-node
       - go build -o ./pop-cluster ./cmd/pop-cluster
       - go build -o ./carrot-spec ./cmd/carrot-spec
@@ -167,6 +175,7 @@ tasks:
       - go build ./cmd/pop-sim
       - go build ./cmd/pop-bootstrap-sim
       - go build ./cmd/pop-bootstrap-config
+      - go build ./cmd/pop-fly-topology
       - go build ./cmd/pop-node
       - go build ./cmd/pop-cluster
       - go build ./cmd/carrot-spec
