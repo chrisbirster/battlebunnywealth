@@ -48,15 +48,18 @@ jobs:
             --app "$FLY_APP" \
             --config "deploy/fly/fly.${REGION}.toml" \
             --dockerfile Dockerfile.pop-node
-      - name: Record deployed machine and image
+      - name: Record deployed machine and immutable image
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLY_APP: ${{ inputs.app_name }}
         run: |
           flyctl status -a "$FLY_APP" --json > fly-status.json
-          jq -r '.Machines[] | [.id, .region, .state, .config.image] | @tsv' fly-status.json
+          flyctl machines list -a "$FLY_APP" --json > fly-machines.json
+          jq -r '.[] | [.id, .region, .state, .image_ref.digest, .config.image] | @tsv' fly-machines.json
       - uses: actions/upload-artifact@v4
         with:
           name: fly-deploy-${{ inputs.region }}-${{ github.sha }}
-          path: fly-status.json
+          path: |
+            fly-status.json
+            fly-machines.json
           retention-days: 90
