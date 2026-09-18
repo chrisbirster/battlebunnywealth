@@ -45,8 +45,8 @@ jobs:
         run: go test ./internal/testnet -run 'Test(Activation|PeerAllowlist|HTTPStatus|P256|SmokeCluster|StoreRestart|DirectIngress|SyncFromWithStore|StoreIgnoresStale|BuildNodeConfigs)'
       - name: Gate replicated TEST-CARROT and transition state
         run: go test ./internal/publictestnet
-      - name: Gate live evidence and review-freeze invariants
-        run: go test ./internal/publictestnet -run 'Test(LiveEvidence|BuildReviewFreeze|ReviewFreeze)'
+      - name: Gate live evidence, Fly topology, and review-freeze invariants
+        run: go test ./internal/publictestnet -run 'Test(LiveEvidence|FlyTopology|BuildReviewFreeze|ReviewFreeze)'
       - name: Test Go
         run: go test ./...
       - name: Smoke Proof-of-Play simulator
@@ -73,6 +73,8 @@ jobs:
         run: go build ./cmd/pop-bootstrap-sim
       - name: Build Fly bootstrap config tool
         run: go build ./cmd/pop-bootstrap-config
+      - name: Build Fly topology evidence tool
+        run: go build ./cmd/pop-fly-topology
       - name: Build testnet node
         run: go build ./cmd/pop-node
       - name: Build testnet cluster harness
