@@ -33,8 +33,10 @@ func main() {
 	outPath := flag.String("out", "review-freeze.json", "output manifest path")
 	var files repeatedFlag
 	var imageDigests repeatedFlag
+	var supportingFiles repeatedFlag
 	flag.Var(&files, "evidence", "live evidence JSON file; repeat for every retained evidence window")
 	flag.Var(&imageDigests, "image-digest", "deployed immutable container image digest (sha256:...); repeat when operators used more than one identical-code image build")
+	flag.Var(&supportingFiles, "supporting-evidence", "supporting evidence/provenance file to hash into the freeze; repeat as needed")
 	flag.Parse()
 	if strings.TrimSpace(*repositorySHA) == "" || len(files) == 0 || len(imageDigests) == 0 {
 		fatal(fmt.Errorf("-repo-sha, at least one -image-digest, and at least one -evidence are required"))
@@ -58,7 +60,15 @@ func main() {
 		}
 		artifacts = append(artifacts, publictestnet.NamedEvidenceWindow{Name: filepath.Base(path), Raw: raw, Window: envelope.Evidence})
 	}
-	manifest, err := publictestnet.BuildReviewFreeze(strings.TrimSpace(*repositorySHA), artifacts, time.Now().UTC(), imageDigests...)
+	supporting := make([]publictestnet.NamedSupportingArtifact, 0, len(supportingFiles))
+	for _, path := range supportingFiles {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			fatal(err)
+		}
+		supporting = append(supporting, publictestnet.NamedSupportingArtifact{Name: filepath.Base(path), Raw: raw})
+	}
+	manifest, err := publictestnet.BuildReviewFreezeWithSupporting(strings.TrimSpace(*repositorySHA), artifacts, supporting, time.Now().UTC(), imageDigests...)
 	if err != nil {
 		fatal(err)
 	}
@@ -69,7 +79,7 @@ func main() {
 	if err := os.WriteFile(*outPath, append(raw, '\n'), 0o600); err != nil {
 		fatal(err)
 	}
-	fmt.Printf("review freeze: %s evidence=%d images=%d hash=%s\n", *outPath, len(manifest.Evidence), len(manifest.ImageDigests), manifest.Hash)
+	fmt.Printf("review freeze: %s evidence=%d supporting=%d images=%d hash=%s\n", *outPath, len(manifest.Evidence), len(manifest.SupportingEvidence), len(manifest.ImageDigests), manifest.Hash)
 }
 
 func fatal(err error) {
